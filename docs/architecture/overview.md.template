@@ -1,0 +1,35 @@
+---
+doc_type: architecture
+scope: overview
+status: active
+last_updated: {{DATE}}
+context_budget: ~400 tokens
+---
+
+# Architecture overview
+
+{{PROJECT_NAME}} is a {{ONE_LINE_SYSTEM_SHAPE}} (e.g. "modular monolith
+with a layered backend and a feature-folder frontend", "a set of N
+services behind a gateway", etc.).
+
+## Top-level shape
+
+- **{{BACKEND_DIR}}** — {{one line: what it is, e.g. "the ASP.NET Core
+  backend, organized as independent modules — see `module-structure.md`"}}
+- **{{FRONTEND_DIR}}** — {{one line, e.g. "the React frontend,
+  organized as independent features — see `frontend.md`"}}
+- **{{OTHER_TOP_LEVEL_DIR}}** — {{delete if none}}
+
+## Cross-cutting concerns and where they're documented
+
+Don't describe these here — this file only orients; each concern gets
+its own doc, referenced from `CLAUDE.md`'s index:
+
+- Data isolation / multi-tenancy (if applicable) → its own doc
+- Auth/authorization → its own doc
+- {{ANY_OTHER_CROSS_CUTTING_CONCERN}} → its own doc
+
+## Why this shape
+
+Reference the ADR(s) that justify the top-level split, don't
+re-explain them here — e.g. `docs/decisions/000N-*.md`.

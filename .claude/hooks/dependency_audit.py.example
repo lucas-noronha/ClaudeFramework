@@ -1,0 +1,58 @@
+"""PostToolUse: run your ecosystem's dependency-vulnerability audit
+whenever a dependency manifest is touched — never on every edit, only
+when the file that actually declares dependencies changes. This is a
+TEMPLATE, like `auto_format.py.example`: replace MANIFEST_COMMANDS with
+your real ecosystem's audit command and rename to `dependency_audit.py`
+once wired into settings.json. Mechanically backs `docs/constitution.md`
+Principle V where that file exists ("dependencies are vetted before
+they're added") — doesn't read or require that file either way.
+Best-effort: failures should never block the turn, only report.
+"""
+import json
+import os
+import subprocess
+import sys
+
+# Map a manifest basename to the audit command that checks it — replace
+# with your project's real ecosystem(s), delete the ones you don't have.
+MANIFEST_COMMANDS = {
+    "package.json": ["npm", "audit", "--omit=dev"],
+    "requirements.txt": ["pip-audit", "-r", "requirements.txt"],
+    "{{SOLUTION_FILE}}": ["dotnet", "list", "{{SOLUTION_FILE}}", "package", "--vulnerable", "--include-transitive"],
+    "Cargo.toml": ["cargo", "audit"],
+    "go.mod": ["govulncheck", "./..."],
+}
+
+
+def main() -> None:
+    data = json.load(sys.stdin)
+    path = data.get("tool_input", {}).get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
+    if not path:
+        return
+
+    basename = os.path.basename(path)
+    command = MANIFEST_COMMANDS.get(basename)
+    if not command:
+        return
+
+    project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
+    try:
+        result = subprocess.run(
+            command, cwd=project, timeout=120, capture_output=True, text=True,
+        )
+    except Exception:
+        return  # audit tool not installed/available — never block the turn over it
+
+    if result.returncode != 0:
+        # Most of these tools exit non-zero when they find a vulnerability,
+        # not just on a real error — report either way, let the agent judge.
+        tail = (result.stdout or result.stderr)[-800:]
+        print(json.dumps({
+            "systemMessage": (
+                f"Dependency audit ({' '.join(command)}) flagged something after {basename} changed:\n{tail}"
+            ),
+        }))
+
+
+if __name__ == "__main__":
+    main()

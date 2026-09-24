@@ -1,0 +1,135 @@
+# Project context
+
+{{ONE_TO_TWO_SENTENCE_PROJECT_DESCRIPTION}}
+
+**Golden rule of this docs repository:** every file covers a single
+subject. Don't read the whole repository — read only what the index
+below points to for the current task. This exists to save context
+tokens.
+
+**Language convention:** this file, architecture docs, ADRs, and the
+`.claude/` infrastructure (agents/commands/skills) are in
+{{CANONICAL_LANG}} — they're reloaded repeatedly by agents, rarely by
+a human. Specs are canonical in {{CANONICAL_LANG}} too; if a
+non-technical stakeholder needs to validate them and doesn't read
+{{CANONICAL_LANG}} comfortably, `/spec` also generates a
+`.validation-{{STAKEHOLDER_LANG_CODE}}.md` companion for their review.
+If canonical and stakeholder language are the same, delete this split
+entirely — see `docs/decisions/0001-tooling-agents-commands-skills.md`
+for the rationale behind the split existing at all.
+
+## Decided stack
+
+- **Frontend:** {{FRONTEND_STACK}} (delete this line if there is none)
+- **Backend:** {{BACKEND_STACK}}
+- **Database:** {{DATABASE}}
+- **Auth:** {{AUTH_PROVIDER}}
+- **Repository:** {{monorepo with N top-level roots | single app}} —
+  see `docs/decisions/` if this needed its own ADR
+
+Full rationale → `docs/decisions/`.
+
+## Index — load only what you need
+
+| I need... | File | ~Cost |
+|---|---|---|
+| Non-negotiable principles (secrets, security baseline, project-specific) — supreme, checked by `/spec`/`/plan`/`coder`/`quickfix`/`reviewer` | `docs/constitution.md` | ~500 tok |
+| Architecture overview | `docs/architecture/overview.md` | ~400 tok |
+| Module/service structure and dependency rules (if applicable — blank slot, fill in or delete) | `docs/architecture/module-structure.md` | ~fill in |
+| Frontend structure and dependency rules (if applicable — blank slot, fill in or delete) | `docs/architecture/frontend.md` | ~fill in |
+| Which ADR to open (index of all of them, id/title/status) | `docs/decisions/README.md` | ~150 tok |
+| Why we chose X over Y | `docs/decisions/000N-*.md` | check that ADR's own `context_budget` — varies a lot by decision (~400 to ~1750 tok) |
+| Which spec to open (index of all of them, id/title/status) | `docs/product/specs/README.md` | ~150 tok |
+| Which skills apply to my agent role | `.claude/skills/README.md` | ~100 tok |
+| Template for a new requirement | `docs/product/requirements-template.md` | ~410 tok |
+| Stakeholder-facing validation summary format | `docs/product/validation-summary-template.md` | ~150 tok |
+| How specs become code (AI-first flow) | `docs/workflow/ai-first-development.md` | ~600 tok |
+| What to type in chat when building a feature | `docs/workflow/feature-development-guide.md` | ~1150 tok |
+| Running more than one task at once | `docs/workflow/parallel-work.md` | ~750 tok |
+| Which model tier a subagent should use | `docs/workflow/model-tiering.md` | ~500 tok |
+| Which global plugins are Core vs Optional for this project | `docs/workflow/plugin-integrations.md` | ~1550 tok |
+| Constitution enforcement, spec lineage, reconciliation, pipeline metrics — how they fit together | `docs/workflow/governance-and-observability.md` | ~950 tok |
+| Technical terms and definitions | `docs/glossary.md` | ~300 tok |
+
+Add a row here for every architecture doc your project actually needs
+(e.g. how tenant isolation works, how auth/authorization works, how
+services communicate) — the two shipped as blank slots
+(`module-structure.md`, `frontend.md`) are starting points to fill in
+or delete, not a default shape every project must have. This framework
+takes no position on monolith vs. microservices, layered vs. flat,
+feature folders vs. anything else — that's your project's call.
+
+The `~Cost` column is a context-engineering aid, not a hard number —
+its point is to make loading decisions cost-aware, not just
+topic-aware. Prefer the narrowest doc that answers the task; the
+overview only when nothing more specific fits.
+
+## This repository's agent infrastructure
+
+- `.claude/README.md` — component reference: what each agent/command/
+  skill/hook below does and why, one line each.
+- `.claude/agents/` — subagents (`triage`, `architect`, `researcher`,
+  `coder`, `quickfix`, `reviewer`), each with a fixed model. `quickfix`
+  is `coder`'s cheaper sibling for the trivial tier `triage` classifies
+  — same expectations, lighter model.
+- `.claude/commands/` — slash commands (`/spec`, `/plan`, `/tasks`,
+  `/implement`, `/review`, `/adr`), the pipeline's deterministic entry
+  points; `/reconcile` to run an on-demand spec-vs-code fidelity sweep
+  against any already-`implemented` spec, any time; `/worktree` to
+  isolate a task in parallel from `origin/{{MAIN_INTEGRATION_BRANCH}}`;
+  `/setup-framework` to adopt or maintain this framework itself
+  (resolving `{{PLACEHOLDER}}`s, installing recommended global plugins
+  — see `docs/workflow/plugin-integrations.md` — and merging
+  scaffolding files like `.gitignore`/`.mcp.json`).
+- `.claude/skills/` — knowledge reusable across stages. Ships with
+  `adr-writing`, `skill-authoring`, and `plugin-awareness` (what the
+  framework's own process needs) — add your own for anything
+  project-specific that applies "at any stage" (a scaffolding
+  checklist, a structural invariant like a required isolation pattern,
+  a sensitive-data rule, etc.), following `skill-authoring/SKILL.md`'s
+  format. Tag each with `applies_to: [agent-name, ...]` in its
+  frontmatter — that's how a project signals a new skill to the agents
+  that need it (edit the skill once, not every agent that should check
+  it). `.claude/skills/README.md` is kept in sync automatically from
+  those tags; each pipeline agent checks it for entries tagged with its
+  own name before starting a task.
+- `.claude/settings.example.json` — sample hook for the deterministic
+  gate (build/lint/tests), plus a `SessionStart` check that flags a
+  missing language-LSP plugin for this repo's stack.
+- `.mcp.json.example` ships Context7 pre-configured (up-to-date,
+  version-specific library docs on demand) — rename to `.mcp.json` to
+  use it; `researcher` prefers it over broad web search for known
+  libraries. Add further MCP entries the same way as your project
+  needs them (e.g. an org-specific one like Azure DevOps — see
+  `docs/workflow/plugin-integrations.md` for a copy-paste example).
+
+Full rationale → `docs/decisions/0001-tooling-agents-commands-skills.md`.
+
+## Conventions for any agent working in this repo
+
+1. **`docs/constitution.md` is supreme, if it exists.** No spec,
+   technical plan, or code may knowingly contradict a principle there.
+   A conflict gets flagged explicitly, never silently worked around —
+   see the file's own Governance section for how it's amended (never a
+   silent edit).
+2. **Never duplicate information across files.** If a fact already
+   exists in another doc, reference its path — don't copy the content.
+3. **Every new architecture decision becomes an ADR** in
+   `docs/decisions/`, sequentially numbered, immutable once accepted
+   (changes become a new ADR that supersedes the old one, never a
+   silent edit).
+4. **Product specs** (features validated with the stakeholder) live
+   outside this architecture docs set — see
+   `docs/product/requirements-template.md` for the format used before
+   something becomes an implementation task, including how a spec
+   auto-tags its own `area` and lineage (`relates_to`), and how its
+   "## Reconciliation" section tracks spec-vs-code fidelity as tasks
+   are implemented. Specs get a `.validation-{{STAKEHOLDER_LANG_CODE}}.md`
+   companion for their review, if the language split applies.
+5. When generating code, the agent should cite which ADR or
+   architecture doc grounds the implementation decision, when
+   applicable.
+6. **Context-engineering discipline**: every doc carries a
+   `context_budget` estimate in its frontmatter. When choosing which
+   doc to load, prefer the smallest one that answers the current
+   question; load the overview only when nothing narrower applies.

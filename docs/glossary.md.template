@@ -1,0 +1,20 @@
+---
+doc_type: glossary
+status: active
+last_updated: {{DATE}}
+context_budget: ~300 tokens
+---
+
+# Glossary
+
+Technical and domain terms an agent might need defined once instead of
+re-inferring from context every time. One term per line, alphabetical,
+no essays — if a term needs more than 2 sentences, it deserves its own
+architecture doc referenced from here, not a longer glossary entry.
+
+- **{{TERM}}** — {{one-sentence definition}}.
+
+Delete this placeholder row and start your project's real list. Keep
+entries here only for terms that recur across multiple docs/specs —
+something used once belongs in that one doc, not here (rule 1 in
+`CLAUDE.md`: never duplicate, reference instead).

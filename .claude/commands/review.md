@@ -1,0 +1,52 @@
+---
+description: Runs a final, whole-feature architecture checklist review over the cumulative diff plus the spec's Definition of Done, delegating to the reviewer subagent. Only after the deterministic gate is green. On approval, offers to push and open a PR when the spec lives in its own worktree.
+---
+
+This is the **final, whole-feature** pass — distinct from the
+per-task `reviewer` pass `/implement`'s orchestration mode already runs
+automatically for coder-tier tasks (see
+`docs/decisions/0004-plan-tasks-implement-rebalance.md`). Run this once
+a spec's tasks are all implemented, to catch cross-task integration
+issues a per-task review can't see, check the spec's own "Technical
+plan → Definition of Done" line by line plus the completeness of its
+"## Reconciliation" section (the per-task pass deliberately skips both
+— they're feature-level questions; see
+`docs/decisions/0009-per-task-spec-reconciliation.md`), or any time you
+need to review hand-edited code that never went through `/implement`
+at all.
+
+Confirm the build/lint/test hook passed on the current changes (see
+the result of the last `/implement` call). If it didn't, stop and
+return to `coder` — don't call `reviewer` over code that doesn't even
+compile.
+
+If it passed, and `superpowers` is enabled this session, invoke its
+`requesting-code-review` skill to make sure the diff and its context
+are actually ready for review before delegating — then delegate to
+`reviewer`, **explicitly telling it the scope is the whole cumulative
+diff** (`git diff` against the base branch, unscoped to any single
+task) — that's the one place in this pipeline where that's the
+intended, deliberate scope, unlike `/implement`'s per-task pass. Report
+the result (approved or returned with specific findings) directly to
+the user.
+
+If the result is **Approved**:
+
+- If `superpowers` is enabled, mention its
+  `finishing-a-development-branch` skill as the next step for deciding
+  how to integrate — this framework has no merge/finish command of its
+  own.
+- If the current branch is `task/<spec-short-name>` (this spec is
+  running in its own worktree, per
+  `docs/decisions/0005-spec-worktree-lifecycle.md`), explicitly offer —
+  never do it unasked, pushing and opening a PR are both visible to
+  others — to push the branch (`git push -u origin
+  task/<spec-short-name>`) and open a PR (`gh pr create`, base
+  `{{MAIN_INTEGRATION_BRANCH}}`). If the project has no `gh`/GitHub
+  remote, say so and point at pushing the branch as the manual next
+  step instead. If the spec isn't in its own worktree, skip this offer
+  entirely — there's nothing spec-scoped to push.
+
+If it's **Returned**, send the findings back to `coder`, which applies
+`superpowers:receiving-code-review` discipline (or the absorbed
+equivalent) before acting on them — see `plugin-awareness`.

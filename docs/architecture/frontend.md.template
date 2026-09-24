@@ -1,0 +1,39 @@
+---
+doc_type: architecture
+scope: frontend
+status: active
+last_updated: {{DATE}}
+context_budget: ~fill in once written
+---
+
+# {{FRONTEND_DIR}} structure
+
+This is a **blank slot**, not a default pattern — this framework
+doesn't assume any particular frontend architecture (feature folders,
+a component library facade, a specific state-management approach, or
+none of that if the frontend is simple). Write down your project's
+actual structure here, precisely enough that `coder` and `reviewer`
+can check dependency/boundary violations against it mechanically.
+Delete this file (and its row in `CLAUDE.md`'s index) entirely if the
+project has no frontend, or no boundaries worth documenting yet.
+
+## Layout
+
+<!-- The real top-level layout: how features/components/pages/state
+are organized. -->
+
+## Dependency rules
+
+<!-- What may import what — e.g. any facade boundary around a
+component library or the HTTP layer, any rule against one feature
+reaching into another's internals. Stated precisely enough for
+`reviewer` to check a diff against. -->
+
+## Enforcing this mechanically
+
+If part of this needs a repeatable checklist an agent applies whenever
+it creates a new feature/component, write it as a project-specific
+Skill under `.claude/skills/` — see `skill-authoring/SKILL.md` for the
+format. This framework ships none by default; what belongs here is a
+property of your project's actual frontend, not something a generic
+template should presume.

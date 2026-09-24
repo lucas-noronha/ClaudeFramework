@@ -1,0 +1,88 @@
+---
+doc_type: workflow
+scope: ai-first-development
+status: active
+last_updated: {{DATE}}
+context_budget: ~700 tokens
+---
+
+# AI-first development flow
+
+## Core principle
+
+The bottleneck on a small team working with AI agents isn't writing
+code — it's keeping context consistent across sessions with AI agents.
+This docs repository exists so any agent loads **only** the context a
+given task needs, never the whole project.
+
+This document describes the conceptual flow. For the practical
+step-by-step of "what do I type in chat", see
+`feature-development-guide.md`. For the subagent/slash-command/skill
+implementation that materializes this flow, see
+`docs/decisions/0001-tooling-agents-commands-skills.md` and the
+`.claude/` folder at the repository root.
+
+## Flow, from requirement to code
+
+1. **Discovery conversation** with the stakeholder about a new feature
+   (outside this docs repository — can be a call, free text, etc.).
+2. **Formalize as a spec**, using
+   `../product/requirements-template.md`, saved at
+   `docs/product/specs/NNNN-short-name.md`. One spec per feature. `/spec`
+   also auto-tags the spec's own `area` and lineage (`relates_to`) by
+   reading the existing spec index — never something you declare by
+   hand — and generates a `.validation-{{STAKEHOLDER_LANG_CODE}}.md`
+   companion, if your project uses a canonical/stakeholder language
+   split — see `../product/validation-summary-template.md` and
+   `governance-and-observability.md`.
+3. **Explicit validation**: the spec only moves from `draft` to
+   `approved` after they review it (directly, or via the
+   validation-summary companion). This is the human-in-the-loop
+   checkpoint — don't skip it. If the feature gets dropped instead, the
+   spec moves to `abandoned` — either way, only a human sets these two,
+   never a hook.
+4. **Implementation session with an AI agent**: the agent receives
+   only
+   - `CLAUDE.md` (always, it's the index)
+   - `docs/constitution.md`, if your project has one — supreme,
+     checked regardless of which feature is being built (see
+     `governance-and-observability.md`)
+   - the specific feature's spec
+   - the architecture docs referenced by the spec (e.g. if it touches
+     a specific cross-cutting concern, load that doc, and only that
+     one)
+
+   Don't load unreferenced ADRs, nor specs from other features.
+5. **New architecture decision during implementation?** It becomes a
+   new ADR before the code is accepted — never an implicit decision
+   left only in the code.
+6. **Reconciliation doesn't stop at merge.** `reviewer` records
+   spec-vs-code fidelity per task while a spec is being implemented,
+   and `/reconcile` lets you re-check an already-`implemented` spec
+   against the codebase any time later — see
+   `governance-and-observability.md` for both mechanisms and how they
+   differ.
+
+## Context-economy practices (context engineering)
+
+- **One subject per file.** If you notice you're explaining two
+  unrelated things in the same doc, it's time to split.
+- **Reference, never copy.** A relative path to another doc, not its
+  content.
+- **ADRs are immutable.** Decision changed? A new ADR with
+  `supersedes` pointing to the old one, which moves to
+  `status: superseded`. This preserves history without forcing a
+  reread of everything on every change.
+- **Frontmatter on every file.** `status`, `scope`, `last_updated`,
+  `context_budget` — lets you filter what to load before even opening
+  the content.
+- **`CLAUDE.md` never grows past one screen.** If it's growing, the new
+  content probably belongs in a specific doc linked from it.
+- **Canonical language for machine-facing infrastructure, stakeholder
+  language for human-facing business content — only if they actually
+  differ.** Agent/command/skill definitions, architecture docs, and
+  ADRs are read repeatedly by agents and rarely by a human — the
+  canonical language keeps that cheap. Specs get a stakeholder-language
+  companion only when the real recurring human reader doesn't read the
+  canonical language comfortably; if they do, don't introduce the
+  split just for its own sake.

@@ -1,0 +1,9 @@
+# Claude Code — per-machine operational state, not project docs
+.claude/settings.local.json
+.claude/session-handoff.md
+.claude/.plugin-gap-dismissed.json
+.claude/pipeline-metrics.jsonl
+
+# Python hook execution artifacts (only appear if a hook is run/tested directly)
+.claude/hooks/__pycache__/
+.claude/hooks/*.pyc

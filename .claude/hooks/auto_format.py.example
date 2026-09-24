@@ -1,0 +1,50 @@
+"""PostToolUse: deterministic auto-format for the file just touched.
+This is a TEMPLATE — the branching below is an example (a .NET backend
++ a TS/React frontend, matching the framework's default architecture
+docs). Replace the two branches with your actual stack's formatter
+commands, and rename this file to `auto_format.py` (drop the
+`.example` suffix) once it's wired to settings.json.
+Best-effort: failures should never block the turn.
+"""
+import json
+import os
+import subprocess
+import sys
+
+
+def main() -> None:
+    data = json.load(sys.stdin)
+    tool_input = data.get("tool_input", {})
+    path = tool_input.get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
+    if not path:
+        return
+
+    project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
+    abspath = path if os.path.isabs(path) else os.path.join(project, path)
+    rel = os.path.relpath(abspath, project).replace("\\", "/")
+
+    try:
+        # Example branch 1 — replace with your backend's formatter.
+        if rel.startswith("{{BACKEND_DIR}}/") and rel.endswith(".cs"):
+            solution = os.path.join(project, "{{BACKEND_DIR}}", "{{SOLUTION_FILE}}")
+            subprocess.run(
+                ["dotnet", "format", solution, "--include", abspath, "--no-restore", "-v", "quiet"],
+                cwd=os.path.join(project, "{{BACKEND_DIR}}"),
+                timeout=60,
+                capture_output=True,
+            )
+        # Example branch 2 — replace with your frontend's formatter/linter.
+        elif rel.startswith("{{FRONTEND_DIR}}/src/") and rel.endswith((".ts", ".tsx")):
+            subprocess.run(
+                ["npx", "{{FRONTEND_LINTER}}", "--fix", abspath],
+                cwd=os.path.join(project, "{{FRONTEND_DIR}}"),
+                timeout=60,
+                capture_output=True,
+                shell=(os.name == "nt"),
+            )
+    except Exception:
+        pass
+
+
+if __name__ == "__main__":
+    main()

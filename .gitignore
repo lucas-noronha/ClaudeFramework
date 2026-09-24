@@ -1,0 +1,18 @@
+# This framework repo's own git hygiene — separate from
+# .gitignore.framework-additions, which is a shipped artifact
+# /setup-framework merges into a *consuming* project's .gitignore.
+# Don't merge the two: this file stays here, that one stays shippable.
+
+# Claude Code — per-machine operational state, not project docs
+.claude/settings.local.json
+.claude/session-handoff.md
+.claude/.plugin-gap-dismissed.json
+.claude/pipeline-metrics.jsonl
+
+# Python hook execution artifacts (only appear if a hook is run/tested directly)
+.claude/hooks/__pycache__/
+.claude/hooks/*.pyc
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

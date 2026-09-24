@@ -1,0 +1,45 @@
+---
+doc_type: architecture
+scope: module-structure
+status: active
+last_updated: {{DATE}}
+context_budget: ~fill in once written
+---
+
+# {{BACKEND_DIR}} structure
+
+This is a **blank slot**, not a default pattern — this framework
+doesn't assume any particular backend architecture (layered modules,
+microservices, hexagonal, a single flat app, whatever). Write down
+your project's actual structure here, precisely enough that `coder`
+and `reviewer` can check dependency violations against it
+mechanically, instead of relying on tribal knowledge. Delete this file
+(and its row in `CLAUDE.md`'s index) if it doesn't apply — e.g. a
+single small app with no internal module boundaries worth documenting.
+
+## Layout
+
+<!-- The real top-level layout: directories/projects/services and what
+each one is. -->
+
+## Dependency rules
+
+<!-- What may depend on what, stated precisely enough to check a diff
+against — this is what `reviewer`'s checklist should point back to. -->
+
+## Where new code goes
+
+<!-- The rule that decides "does this become its own module/service,
+or live inside an existing one" for your project — and, if you have a
+shared/common layer, the bar for promoting code into it (usually: only
+after a second real consumer needs it, not in anticipation). -->
+
+## Enforcing this mechanically
+
+If part of this needs a repeatable checklist an agent applies whenever
+it creates a new module/table/component (e.g. a scaffolding checklist,
+a structural invariant like a required isolation pattern), write it as
+a project-specific Skill under `.claude/skills/` — see
+`skill-authoring/SKILL.md` for the format. This framework ships none
+by default; what belongs here is entirely a property of your project's
+actual architecture, not something a generic template should presume.
