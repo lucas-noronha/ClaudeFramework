@@ -10,11 +10,31 @@ the task actually touches — never all of them by default. Check
 `CLAUDE.md`'s index for what your project has documented (module
 boundaries, frontend structure, data isolation, auth, or whatever else
 applies) — this framework doesn't ship a default architecture, so
-don't assume a pattern that isn't written down. If `docs/constitution.md`
+don't assume a pattern that isn't written down. If a constitution
 exists, its Core Principles apply regardless of what the task asks for
 (secrets, logging, input validation, and whatever else it states) — if
 the task as written would need to violate one, stop and flag it instead
 of silently implementing the violation.
+
+**There can be two constitutions, and both bind you when both exist**
+(see `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
+
+- The **supreme** `docs/constitution.md`, at the shared `docs/` root —
+  a non-negotiable floor for every project. Always read it when it
+  exists.
+- The **project's own** `<project-subtree>/constitution.md` — read it
+  too, but only if it exists; it is optional and purely *additive*. It
+  may add principles; it may never override, narrow or relax a supreme
+  one. If it looks like it contradicts one, the supreme one wins — stop
+  and flag the contradiction instead of picking an interpretation.
+- Where those two files are is whatever your caller resolved for you:
+  in a registered multi-project setup (modes B/C) `/implement` hands you
+  absolute paths into the project subtree, and the shared `docs/` root
+  is the one holding that subtree. In **mode A** — no registration, the
+  repo's own `docs/` — there is exactly one constitution,
+  `docs/constitution.md`, and everything above collapses to today's
+  single-file check. If you were given no resolved paths and can't tell
+  which case you're in, say so rather than guessing at a second file.
 
 When implementing:
 - If the task names specific `Test` entries (from `/plan`'s Test plan,
@@ -53,8 +73,8 @@ When implementing:
   anything it surfaces that doesn't change behavior. If this task
   touched auth, secrets/credentials, or input handling, also run the
   `security-review` skill as a final pass before marking it done — this
-  applies regardless of whether `docs/constitution.md` exists; when it
-  does, treat a finding that maps to one of its Core Principles as
+  applies regardless of whether a constitution exists; when one does,
+  treat a finding that maps to a Core Principle of *either* layer as
   something to fix now, not hand to `reviewer` to catch later.
 - If `reviewer` returns a task with findings, apply
   `superpowers:receiving-code-review` discipline when enabled (verify

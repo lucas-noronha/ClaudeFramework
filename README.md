@@ -32,7 +32,8 @@ CLAUDE.md.template              → copy to your repo root; /setup-framework fil
   commands/        → 9 slash commands, the pipeline's deterministic entry points
   skills/          → 3 meta-skills (adr-writing, skill-authoring, plugin-awareness) — the framework ships no architecture/domain skill, you add your own and tag each with applies_to: [agent-name, ...]
   hooks/           → deterministic, zero-token-cost checks and guards: 3 keep docs/decisions/README.md, docs/product/specs/README.md, and .claude/skills/README.md indexed automatically; 3 more nudge (never block) on doc context-budget drift, missing frontmatter, and a docs/constitution.md change without a version bump; 1 flips a spec's status to implemented once its tasks are all checked off; 1 blocks a write that matches a high-confidence secret pattern, repo-wide, active by default; 1 more runs your ecosystem's dependency audit when a manifest changes; 2 append a raw pipeline-observability event log (one is a shared helper, not wired directly); 1 pair (session start/end) carries a handoff note between sessions; 1 more flags at session start when the repo's language has an official LSP plugin not yet enabled
-  settings.example.json → wires the hooks; /setup-framework renames it to settings.json with the build/test command filled in
+  settings.example.json → wires the hooks for mode A; /setup-framework renames it to settings.json with the build/test command filled in
+  settings.multi-project.json.example → the same wiring for modes B/C, where one settings.json is shared by several projects: hook paths behind a {{HOOKS_DIR}} placeholder /setup-framework resolves per mode, the build/test gate and the language-dependent agent hooks looking their values up per project at runtime instead of being baked in
 docs/
   constitution.md  → supreme, versioned, non-negotiable principles (secrets, security baseline, one placeholder slot for a project-specific one) — checked by /spec, /plan, coder/quickfix, reviewer; amended under its own Governance section, never edited silently (ADR 0007)
   glossary.md.template
@@ -65,10 +66,38 @@ set up yet, not as a real value. Common ones:
 
 ## Adopting this in a new project
 
+`/setup-framework` opens with **one question: which of three adoption
+modes you want** (`docs/decisions/0014-setup-framework-adoption-modes.md`).
+They're mutually exclusive whole-repo commitments, and they differ only
+in where the machinery physically lives — so the command explains each
+one's real trade-offs before you pick, because **a wrong choice is
+expensive to undo** (it means moving `docs/product/specs/`,
+`docs/decisions/` and `CLAUDE.md` between a repo root, a cloned
+AI-repo, and a user-level projects root, then relinking or unlinking
+every repo pointing at the old layout).
+
+| Mode | Where the machinery lives | The code repo gets | Best when |
+|---|---|---|---|
+| **A — Direct in-repo** | the code repo's own root | everything, committed | nothing forbids Claude files in the repo, one project |
+| **B — External AI-repo** | a separate AI-repo | three never-committed links | the code repo must stay Claude-free, and you want the framework versioned and shared with a team |
+| **C — User-level** | `~/.claude` on your machine | nothing at all | you want one setup covering every repo you touch, per developer |
+
+Modes B and C both back **several projects from one copy** of the
+machinery, using the same mechanism (`docs/decisions/0013-multi-project-ai-repo.md`):
+a per-machine, gitignored `projects.local.json` routes this session's
+`CLAUDE_PROJECT_DIR` to that project's own subtree, and a
+`project-config.json` in that subtree holds its build/test command and
+language settings. A single shared `settings.json` then serves every
+project, since nothing project-specific is baked into it. One project
+is just N=1 in that structure — there's no simpler single-project path
+to choose, and no migration when a second project arrives.
+
+### Mode A — direct in-repo
+
 1. Copy `.claude/`, `docs/`, `CLAUDE.md.template`,
    `.mcp.json.example`, and `.gitignore.framework-additions` into the
    new repo's root — as-is, no renaming yet.
-2. Run `/setup-framework` inside that repo. It:
+2. Run `/setup-framework` inside that repo and pick mode A. It:
    - **Domain 1** — detects what it can from your repo (project name,
      default branch, backend/frontend split, build/test command, …),
      asks you to confirm or fill in the rest, resolves every
@@ -116,6 +145,77 @@ set up yet, not as a real value. Common ones:
    `docs/workflow/feature-development-guide.md` (the "what do I type"
    recipe) once — after that you shouldn't need to re-derive the flow.
 5. Start with `/spec <idea>`.
+
+### Mode B — external AI-repo (zero footprint in the code repo)
+
+Some environments forbid committing anything Claude-related inside the
+actual code repo at all. For that case skip mode A's step 1 entirely —
+keep this repo (or a company fork of it) as its own separate
+**AI-repo** — and run `/setup-framework` from inside it, picking mode
+B. Its **Domain 5** then, once per target repo:
+
+- **Links** the target code repo to this one via local,
+  never-committed relative symlinks/junctions/hard links at
+  `<target repo>/.claude` → the one shared `.claude/`,
+  `<target repo>/docs` → the AI-repo's own shared `docs/` root, and
+  `<target repo>/CLAUDE.md` → `docs/<name>/CLAUDE.md`. The `docs` link
+  reaches shared material (`constitution.md`, `workflow/`, `glossary.md`)
+  transparently; a project's own content is reached through the
+  registry instead, per ADR 0015 — see the `project-registration`
+  skill.
+- **Creates that project's own `docs/<name>/` subtree** in the
+  AI-repo, holding its real `product/specs/`, its ADRs starting fresh
+  at `0000-adr-template.md`, its `CLAUDE.md`, and optionally its own
+  `constitution.md` (additive only, never overriding the shared one) —
+  so several target repos share one `.claude/` and one `docs/` root
+  without their product content ever colliding.
+- **Writes the two config files** ADR 0013 splits by lifecycle: a
+  gitignored, per-machine `.claude/projects.local.json` routing this
+  machine's path for the target repo to that subtree, and a committed
+  `docs/<name>/project-config.json` holding the build/test command
+  and language settings (never overwritten without asking).
+- **Adds a bootstrap note at the *lowest common ancestor*** of the two
+  repos — auto-loaded by Claude Code's own directory-tree walk, no
+  link required for this part — telling any session started in the
+  target repo to stop and demand this setup if the links are missing.
+
+The target repo doesn't need to be a sibling directory: it can sit at
+any depth, e.g. one package deep inside someone else's monorepo, as
+long as the two repos share *some* common ancestor on the same
+filesystem. It ends up with zero Claude-related files ever staged in
+its own git history. The links and the routing file are per machine, so
+re-run Domain 5 after any fresh clone or on a new machine — see Domain
+5 in `.claude/commands/setup-framework.md` for the exact steps.
+
+### Mode C — user-level, multi-project (no links anywhere)
+
+Claude Code already loads `~/.claude` for every session on a machine,
+so if the machinery lives there, a code repo needs no copied file *and*
+no link to reach it. Pick mode C and **Domain 6** merges `agents/`,
+`commands/`, `skills/` and `hooks/` into `~/.claude/` — never
+overwriting a file you already have there; a collision stops and asks
+— writes or additively merges `~/.claude/settings.json`, and asks once
+for a **projects root**, the folder each registered project's
+`<name>/docs/`, `<name>/CLAUDE.md` and `<name>/project-config.json`
+get created under. `~/.claude/projects/` is the default, but any folder
+works, including one you already version or sync; the command says
+plainly that the default sits outside version control, so a machine
+loss takes those specs and ADRs with it.
+
+Domain 6 registers **no project** — that's lazy on purpose
+(`docs/decisions/0014-setup-framework-adoption-modes.md`). The first
+time you run `/spec`, `/plan`, `/tasks`, `/implement`, `/review`,
+`/adr` or `/reconcile` in a repo that isn't registered yet, that
+command pauses, asks for the project name, build/test command and
+language settings, creates the subtree and its routing entry, and then
+continues with what you asked for. Run it once per machine; nothing is
+ever run per project.
+
+Two things to know before choosing it: it's per developer, so a
+teammate gets none of it (mode B is the shareable one), and if you've
+relocated your user-level config with `CLAUDE_CONFIG_DIR`, `~/.claude`
+is no longer what Claude Code reads — the setup detects that and asks,
+but a hook can't adapt to it at runtime.
 
 ## The pipeline
 

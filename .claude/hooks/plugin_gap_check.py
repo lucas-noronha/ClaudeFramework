@@ -12,10 +12,14 @@ chooses not to install something.
 import json
 import os
 import subprocess
+import sys
 from collections import Counter
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import state_file_path  # noqa: E402
+
 MIN_FILES = 3  # ignore a handful of incidental files of a language
-DISMISS_FILE = ".claude/.plugin-gap-dismissed.json"  # per-machine, gitignored
+DISMISS_FILENAME = ".plugin-gap-dismissed.json"  # per-machine, gitignored
 
 LANGUAGE_PLUGINS = {
     ".cs": "csharp-lsp",
@@ -25,8 +29,10 @@ LANGUAGE_PLUGINS = {
 
 
 def dismissed_plugins(project: str) -> set:
+    # Per-project state: a shared `.claude/` would otherwise let one
+    # target repo's dismissal silence the suggestion for all of them.
     try:
-        with open(os.path.join(project, DISMISS_FILE), encoding="utf-8") as f:
+        with open(state_file_path(project, DISMISS_FILENAME), encoding="utf-8") as f:
             data = json.load(f)
         return set(data.get("dismissed", []))
     except Exception:

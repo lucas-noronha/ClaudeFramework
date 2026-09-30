@@ -1,7 +1,7 @@
 ---
 doc_type: adr
 id: 0006
-status: proposed
+status: accepted
 date: {{DATE}}
 supersedes: null
 superseded_by: null

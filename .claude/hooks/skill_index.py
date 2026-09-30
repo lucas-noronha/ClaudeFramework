@@ -52,12 +52,24 @@ def main() -> None:
 
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    skills_dir = os.path.join(project, ".claude", "skills")
-
     normalized = abspath.replace("\\", "/")
-    normalized_skills_dir = skills_dir.replace("\\", "/").rstrip("/")
 
-    if not normalized.startswith(normalized_skills_dir + "/"):
+    # `.claude/skills` may be a real/symlinked project directory (mode A/B)
+    # or, when the project itself has no `.claude` at all (mode C), only
+    # exist at the user-level `~/.claude/skills` — check both candidates,
+    # since the path reported here can be relative or an absolute mode-C
+    # path with no relationship to `project` at all.
+    candidates = [
+        os.path.join(project, ".claude", "skills"),
+        os.path.join(os.path.expanduser("~"), ".claude", "skills"),
+    ]
+    skills_dir = None
+    for candidate in candidates:
+        normalized_candidate = candidate.replace("\\", "/").rstrip("/")
+        if normalized.startswith(normalized_candidate + "/"):
+            skills_dir = candidate
+            break
+    if skills_dir is None:
         return
     if os.path.basename(abspath) != "SKILL.md":
         return

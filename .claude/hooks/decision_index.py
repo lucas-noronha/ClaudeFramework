@@ -11,6 +11,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import normalize, resolve_docs_root  # noqa: E402
+
 
 def parse_adr(path: str):
     try:
@@ -58,10 +61,15 @@ def main() -> None:
 
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    decisions_dir = os.path.join(project, "docs", "decisions")
+    decisions_dir = os.path.join(resolve_docs_root(project), "decisions")
 
-    normalized_dir = os.path.dirname(abspath).replace("\\", "/").rstrip("/")
-    if normalized_dir != decisions_dir.replace("\\", "/").rstrip("/"):
+    # Self-gating: this hook fires on every Write/Edit in the multi-project
+    # settings variant, so it decides relevance itself rather than trusting
+    # a literal-prefix `if` condition — it compares the tool-reported
+    # path's own directory against the resolved decisions_dir directly
+    # instead, which works regardless of which of the two path shapes a
+    # tool call reports (see resolve_docs_root in _project_paths.py).
+    if normalize(os.path.dirname(abspath)) != normalize(decisions_dir):
         return
     if os.path.basename(abspath) == "README.md":
         return

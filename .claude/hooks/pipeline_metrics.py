@@ -34,6 +34,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _pipeline_metrics import log_event  # noqa: E402
+from _project_paths import normalize, resolve_docs_root  # noqa: E402
 
 RECONCILIATION_SECTION = re.compile(r"^##\s*Reconciliation\s*$(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL)
 
@@ -119,9 +120,15 @@ def main() -> None:
     if not path:
         return
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    specs_dir = os.path.join(project, "docs", "product", "specs")
-    normalized_dir = os.path.dirname(abspath).replace("\\", "/").rstrip("/")
-    if normalized_dir != specs_dir.replace("\\", "/").rstrip("/"):
+    specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
+
+    # Self-gating: this hook fires on every Write/Edit in the multi-project
+    # settings variant, so it decides relevance itself rather than trusting
+    # a literal-prefix `if` condition — it compares the tool-reported
+    # path's own directory against the resolved specs_dir directly instead,
+    # which works regardless of which of the two path shapes a tool call
+    # reports (see resolve_docs_root in _project_paths.py).
+    if normalize(os.path.dirname(abspath)) != normalize(specs_dir):
         return
     base = os.path.basename(abspath)
     if base == "README.md" or ".validation-" in base:

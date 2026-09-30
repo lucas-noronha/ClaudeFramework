@@ -15,6 +15,11 @@ import os
 import sys
 from datetime import datetime, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import state_file_path  # noqa: E402
+
+HANDOFF_FILENAME = "session-handoff.md"
+
 
 def main() -> None:
     data = json.load(sys.stdin)
@@ -35,7 +40,11 @@ def main() -> None:
         f"{message}\n"
     )
 
-    with open(os.path.join(project, ".claude", "session-handoff.md"), "w", encoding="utf-8") as f:
+    # Per-project state, not `.claude/` machinery: with a shared
+    # `.claude/` this would otherwise be one physical file for every
+    # target repo (ADR 0013), so it follows the project, not the config
+    # directory. session_brief.py reads back from the same resolution.
+    with open(state_file_path(project, HANDOFF_FILENAME), "w", encoding="utf-8") as f:
         f.write(content)
 
 

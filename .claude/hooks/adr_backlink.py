@@ -9,6 +9,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import normalize, resolve_docs_root  # noqa: E402
+
 
 def main() -> None:
     data = json.load(sys.stdin)
@@ -18,8 +21,15 @@ def main() -> None:
 
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
+    decisions_dir = os.path.join(resolve_docs_root(project), "decisions")
 
-    if "docs/decisions/" not in abspath.replace("\\", "/"):
+    # Self-gating: this hook fires on every Write/Edit in the multi-project
+    # settings variant, so it decides relevance itself rather than trusting
+    # a literal-prefix `if` condition — it compares the tool-reported
+    # path's own directory against the resolved decisions_dir directly
+    # instead, which works regardless of which of the two path shapes a
+    # tool call reports (see resolve_docs_root in _project_paths.py).
+    if normalize(os.path.dirname(abspath)) != normalize(decisions_dir):
         return
 
     try:
@@ -38,7 +48,6 @@ def main() -> None:
         return
     new_id = id_match.group(1)
 
-    decisions_dir = os.path.join(project, "docs", "decisions")
     candidates = [
         p for p in glob.glob(os.path.join(decisions_dir, f"{old_id}-*.md"))
         if os.path.basename(p) != os.path.basename(abspath)

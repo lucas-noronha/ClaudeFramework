@@ -3,6 +3,11 @@ description: Creates a feature spec from the requirements template, producing a 
 argument-hint: short description of the feature
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing.
+
 Use `docs/product/requirements-template.md` as the fixed structure.
 From the description in $ARGUMENTS:
 
@@ -28,10 +33,25 @@ From the description in $ARGUMENTS:
 3. Fill in the business context and functional/non-functional
    requirements that are already clear from the description, **in
    {{CANONICAL_LANG}}** — this is the canonical file agents will
-   reload repeatedly. Also check `docs/constitution.md`, if present —
-   if the requirement as described would need to violate a principle
-   there, flag that explicitly as one of the "unclear, ask" items
-   below rather than formalizing it silently.
+   reload repeatedly. Also check the constitution, if present — if the
+   requirement as described would need to violate a principle there,
+   flag that explicitly as one of the "unclear, ask" items below rather
+   than formalizing it silently. **There can be two of them, and you
+   read both whenever both exist** (see
+   `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
+   - the supreme `docs/constitution.md` at the **shared** `docs/` root
+     (the one `project-registration`'s step 4 points you at for shared
+     material) — always, and it is a non-negotiable floor;
+   - `<project-subtree>/constitution.md` — the project's own
+     principles — **only if it exists**, which is optional. It *adds*
+     to the supreme one; it never overrides, narrows or relaxes it. If
+     a project principle looks like it contradicts a supreme one, treat
+     the supreme one as binding and raise the contradiction as an
+     "unclear, ask" item; never silently reconcile the two.
+   In **mode A** (`project-registration` stopped at its step 1 — no
+   registry entry, relative paths unchanged) there is exactly one
+   constitution, `docs/constitution.md`, and this step is today's
+   single-file check, unchanged.
 4. **Area and lineage, automatically — never ask the human to tag
    this** (see `docs/decisions/0008-spec-area-lineage.md`): read
    `docs/product/specs/README.md`, already grouped by area. If this

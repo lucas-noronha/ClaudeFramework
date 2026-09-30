@@ -3,6 +3,11 @@ description: Records an architecture decision directly, outside the /plan pipeli
 argument-hint: short description of the decision to record
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing.
+
 This is the "we just decided something, write it down" path — use it
 instead of `/plan` when there's no spec/task driving the decision.
 

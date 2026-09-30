@@ -1,0 +1,183 @@
+{
+  "permissions": {
+    "allow": [
+      "Write(docs/product/specs/*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/session_brief.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/plugin_gap_check.py\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/session_handoff.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/adr_immutability_guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/spec_number_guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/secret_leak_guard.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/run_build_test.py\"",
+            "timeout": 180,
+            "statusMessage": "Running build + tests (deterministic gate)..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/auto_format.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/context_budget_check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/frontmatter_check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/claude_md_index_check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/dependency_audit.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/skill_index.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/adr_backlink.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/decision_index.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/spec_index.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/spec_status_sync.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/pipeline_metrics.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/pipeline_metrics.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/pipeline_metrics.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}/constitution_amendment_check.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "if": "Edit(docs/product/specs/*)",
+        "hooks": [
+          {
+            "type": "agent",
+            "model": "sonnet",
+            "timeout": 120,
+            "statusMessage": "Checking if the spec's stakeholder-language validation summary needs syncing...",
+            "prompt": "Hook input (PostToolUse JSON): $ARGUMENTS\n\nStep 0 — resolve which project this session belongs to, and that project's language settings, BEFORE anything else. Nothing below is hardcoded to a language; one shared settings file serves every project, so you must look these up.\n  a. Find the routing registry: read \"<CLAUDE_PROJECT_DIR>/.claude/projects.local.json\" if it exists, otherwise \"~/.claude/projects.local.json\" — the same two places Claude Code itself already looks for a .claude/ directory. Use the first one that exists and parses as JSON.\n  b. Look up this session's own CLAUDE_PROJECT_DIR (absolute path, normalized to forward slashes, no trailing slash) as a key in that object. Its value is this project's subtree path. The \"projects_root\" key is not a project entry — ignore it.\n  c. Read \"<subtree>/project-config.json\" and take canonical_lang, stakeholder_lang and stakeholder_lang_code from it.\n  d. If any of a-c fails (no registry file, no entry for this CLAUDE_PROJECT_DIR, missing or unparsable project-config.json), STOP now and emit a one-line systemMessage saying this project isn't registered yet and that the next pipeline command (/spec, /plan, …) will register it. Never guess a language, never block the session — fail open, same posture as constitution_amendment_check.py.\n  e. If canonical_lang and stakeholder_lang are the same value, stop now with no output — this project doesn't use a canonical/stakeholder language split.\nBelow, CANONICAL_LANG, STAKEHOLDER_LANG and STAKEHOLDER_LANG_CODE always mean the values resolved in step 0. A path written as \"docs/...\" below means this project's own docs root: \"<CLAUDE_PROJECT_DIR>/docs\" when that path exists (external AI-repo mode links it), otherwise \"<subtree>/docs\" (user-level mode, where the project has no docs of its own).\n\nYou keep a product spec's STAKEHOLDER_LANG stakeholder-validation summary in sync with its canonical CANONICAL_LANG file, per docs/decisions/0001-tooling-agents-commands-skills.md's convention (each spec has a paired .validation-<STAKEHOLDER_LANG_CODE>.md).\n\n1. Extract the edited file's path from the JSON (tool_input.file_path for Edit, tool_response.filePath as a fallback).\n2. If the path is not inside that docs root's \"product/specs/\" directory, or does not end in \".md\", stop now, no output.\n3. If the path contains \".validation-\", stop now, no output — this hook only reacts to the canonical spec file, never its own companion, to avoid a rewrite loop.\n4. Read the file. Find the YAML frontmatter `status:` field (near the top, e.g. `status: draft`).\n5. If status is `draft` or `abandoned`, or the field is missing, stop now, no output — either not approved yet, or a dropped feature that no longer needs a synced summary.\n6. Otherwise (status is `approved` or `implemented` — the stakeholder has approved it) the companion path is the same path with `.md` replaced by `.validation-<STAKEHOLDER_LANG_CODE>.md`.\n   - Read docs/product/validation-summary-template.md for the expected structure and tone (plain-language STAKEHOLDER_LANG, non-technical reader, short).\n   - Read the companion file if it already exists.\n   - Compare the companion's summary sections against the canonical spec's CURRENT business context and functional/non-functional requirements. If the companion is missing, or its content no longer matches the canonical requirements, write/rewrite it in the template's style, referencing the canonical file by name as the template does. If it already matches, make no change.\n   - If the companion already has a validation checklist with existing checkbox states, preserve those checkboxes as-is — don't reset them. Only add the template's default questions if creating the file fresh.\n7. End with a one-line systemMessage: either what you updated (e.g. \"Validation summary refreshed for NNNN — FRs had changed since last sync\") or \"Validation summary for <spec> already in sync, no changes made\"."
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "if": "Write(docs/product/specs/*)",
+        "hooks": [
+          {
+            "type": "agent",
+            "model": "sonnet",
+            "timeout": 120,
+            "statusMessage": "Checking if the spec's stakeholder-language validation summary needs syncing...",
+            "prompt": "Hook input (PostToolUse JSON): $ARGUMENTS\n\nStep 0 — resolve which project this session belongs to, and that project's language settings, BEFORE anything else. Nothing below is hardcoded to a language; one shared settings file serves every project, so you must look these up.\n  a. Find the routing registry: read \"<CLAUDE_PROJECT_DIR>/.claude/projects.local.json\" if it exists, otherwise \"~/.claude/projects.local.json\" — the same two places Claude Code itself already looks for a .claude/ directory. Use the first one that exists and parses as JSON.\n  b. Look up this session's own CLAUDE_PROJECT_DIR (absolute path, normalized to forward slashes, no trailing slash) as a key in that object. Its value is this project's subtree path. The \"projects_root\" key is not a project entry — ignore it.\n  c. Read \"<subtree>/project-config.json\" and take canonical_lang, stakeholder_lang and stakeholder_lang_code from it.\n  d. If any of a-c fails (no registry file, no entry for this CLAUDE_PROJECT_DIR, missing or unparsable project-config.json), STOP now and emit a one-line systemMessage saying this project isn't registered yet and that the next pipeline command (/spec, /plan, …) will register it. Never guess a language, never block the session — fail open, same posture as constitution_amendment_check.py.\n  e. If canonical_lang and stakeholder_lang are the same value, stop now with no output — this project doesn't use a canonical/stakeholder language split.\nBelow, CANONICAL_LANG, STAKEHOLDER_LANG and STAKEHOLDER_LANG_CODE always mean the values resolved in step 0. A path written as \"docs/...\" below means this project's own docs root: \"<CLAUDE_PROJECT_DIR>/docs\" when that path exists (external AI-repo mode links it), otherwise \"<subtree>/docs\" (user-level mode, where the project has no docs of its own).\n\nYou keep a product spec's STAKEHOLDER_LANG stakeholder-validation summary in sync with its canonical CANONICAL_LANG file, per docs/decisions/0001-tooling-agents-commands-skills.md's convention (each spec has a paired .validation-<STAKEHOLDER_LANG_CODE>.md).\n\n1. Extract the written file's path from the JSON (tool_input.file_path for Write, tool_response.filePath as a fallback).\n2. If the path is not inside that docs root's \"product/specs/\" directory, or does not end in \".md\", stop now, no output.\n3. If the path contains \".validation-\", stop now, no output — this hook only reacts to the canonical spec file, never its own companion, to avoid a rewrite loop.\n4. Read the file. Find the YAML frontmatter `status:` field (near the top, e.g. `status: draft`).\n5. If status is `draft` or `abandoned`, or the field is missing, stop now, no output — either not approved yet, or a dropped feature that no longer needs a synced summary.\n6. Otherwise (status is `approved` or `implemented` — the stakeholder has approved it) the companion path is the same path with `.md` replaced by `.validation-<STAKEHOLDER_LANG_CODE>.md`.\n   - Read docs/product/validation-summary-template.md for the expected structure and tone (plain-language STAKEHOLDER_LANG, non-technical reader, short).\n   - Read the companion file if it already exists.\n   - Compare the companion's summary sections against the canonical spec's CURRENT business context and functional/non-functional requirements. If the companion is missing, or its content no longer matches the canonical requirements, write/rewrite it in the template's style, referencing the canonical file by name as the template does. If it already matches, make no change.\n   - If the companion already has a validation checklist with existing checkbox states, preserve those checkboxes as-is — don't reset them. Only add the template's default questions if creating the file fresh.\n7. End with a one-line systemMessage: either what you updated (e.g. \"Validation summary refreshed for NNNN — FRs had changed since last sync\") or \"Validation summary for <spec> already in sync, no changes made\"."
+          }
+        ]
+      }
+    ]
+  }
+}

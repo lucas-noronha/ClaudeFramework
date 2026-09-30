@@ -3,6 +3,11 @@ description: Triages complexity and produces the actual technical plan for a val
 argument-hint: path to the spec (docs/product/specs/NNNN-name.md)
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing.
+
 Prerequisite: the spec at $ARGUMENTS needs `status: approved`. If it
 isn't (including `abandoned` — don't resurrect a dropped feature
 silently), stop and warn — don't proceed with a technical plan over an
@@ -34,8 +39,21 @@ unvalidated or dead requirement.
    for (or one it explicitly ruled out), flag it explicitly instead of
    folding it in silently — a real scope gap belongs back in `/spec`,
    not smuggled into the plan. Also check the plan's approach against
-   `docs/constitution.md`, if present — flag a conflict the same way,
-   don't plan around it silently.
+   the constitution, if present — flag a conflict the same way, don't
+   plan around it silently. **There can be two of them, and you check
+   the approach against both whenever both exist** (see
+   `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
+   the supreme `docs/constitution.md` at the **shared** `docs/` root
+   (always, non-negotiable floor — it is shared material, so
+   `project-registration`'s step 4 tells you where to read it from),
+   plus `<project-subtree>/constitution.md` **if that project has one**
+   (optional, additive only — never read it as overriding, narrowing or
+   relaxing a supreme principle; if it looks like it contradicts one,
+   flag that as its own finding rather than reconciling it in the plan).
+   In **mode A** (`project-registration` stopped at its step 1 — no
+   registry entry, relative paths unchanged) there is exactly one
+   constitution, `docs/constitution.md`, and this is today's
+   single-file check, unchanged.
 6. **Definition of Done + Test plan** (standard and structural alike):
    write two short checklists, both numbered against the spec's own
    `FR-NN`/`AC-NN` items — never free-floating, so a test or a DoD line

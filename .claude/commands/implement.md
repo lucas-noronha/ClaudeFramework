@@ -3,6 +3,12 @@ description: Implements one task, or orchestrates every remaining task in a spec
 argument-hint: task number/description, or a spec path to run every remaining task
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing. Once, here, before
+either mode below branches — both need a resolved project either way.
+
 Two modes, based on $ARGUMENTS.
 
 ## Single-task mode — $ARGUMENTS names one task

@@ -17,6 +17,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _pipeline_metrics import log_event  # noqa: E402
+from _project_paths import normalize, resolve_docs_root  # noqa: E402
 
 STATUSES_ELIGIBLE_TO_FLIP = {"approved"}
 
@@ -29,10 +30,15 @@ def main() -> None:
 
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    specs_dir = os.path.join(project, "docs", "product", "specs")
+    specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
 
-    normalized_dir = os.path.dirname(abspath).replace("\\", "/").rstrip("/")
-    if normalized_dir != specs_dir.replace("\\", "/").rstrip("/"):
+    # Self-gating: this hook fires on every Write/Edit in the multi-project
+    # settings variant, so it decides relevance itself rather than trusting
+    # a literal-prefix `if` condition — it compares the tool-reported
+    # path's own directory against the resolved specs_dir directly instead,
+    # which works regardless of which of the two path shapes a tool call
+    # reports (see resolve_docs_root in _project_paths.py).
+    if normalize(os.path.dirname(abspath)) != normalize(specs_dir):
         return
     base = os.path.basename(abspath)
     if base == "README.md" or ".validation-" in base:
@@ -77,9 +83,8 @@ def main() -> None:
         area=area_match.group(1).strip() if area_match else None,
     )
 
-    rel = os.path.relpath(abspath, project).replace("\\", "/")
     print(json.dumps({
-        "systemMessage": f"{rel}: all {len(boxes)} tasks checked off — status flipped to implemented.",
+        "systemMessage": f"{base}: all {len(boxes)} tasks checked off — status flipped to implemented.",
     }))
 
 

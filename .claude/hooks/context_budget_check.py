@@ -10,6 +10,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import resolve_docs_root, resolve_project_root  # noqa: E402
+
 CHARS_PER_TOKEN = 4  # rough, stdlib-only heuristic — good enough for a drift nudge
 OVERAGE_FACTOR = 2  # only nudge past 2x the stated budget, to avoid noisy near-misses
 
@@ -21,8 +24,9 @@ def main() -> None:
         return
 
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
+    root = resolve_project_root(project)
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    docs_dir = os.path.join(project, "docs")
+    docs_dir = resolve_docs_root(project)
 
     normalized = abspath.replace("\\", "/")
     normalized_docs_dir = docs_dir.replace("\\", "/").rstrip("/")
@@ -53,7 +57,7 @@ def main() -> None:
     estimated_tokens = len(content) // CHARS_PER_TOKEN
 
     if estimated_tokens > stated_budget * OVERAGE_FACTOR:
-        rel = os.path.relpath(abspath, project).replace("\\", "/")
+        rel = os.path.relpath(abspath, root).replace("\\", "/")
         print(json.dumps({
             "systemMessage": (
                 f"{rel} is roughly {estimated_tokens} tokens, well past its own "

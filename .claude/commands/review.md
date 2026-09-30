@@ -2,6 +2,11 @@
 description: Runs a final, whole-feature architecture checklist review over the cumulative diff plus the spec's Definition of Done, delegating to the reviewer subagent. Only after the deterministic gate is green. On approval, offers to push and open a PR when the spec lives in its own worktree.
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing.
+
 This is the **final, whole-feature** pass — distinct from the
 per-task `reviewer` pass `/implement`'s orchestration mode already runs
 automatically for coder-tier tasks (see

@@ -50,6 +50,46 @@ your actual rules):
 - [ ] No sensitive or regulated data logged in plain text, if
       applicable to this project
 
+**Constitution — check both layers, the supreme one wins** (see
+`docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`).
+When a constitution exists, the diff is checked against it, and since
+ADR 0015 there can be two:
+
+- the **supreme** `docs/constitution.md` at the shared `docs/` root —
+  always, a non-negotiable floor binding every project;
+- the **project's own** `<project-subtree>/constitution.md` — only if it
+  exists (optional, and purely additive: it may add principles, never
+  override, narrow or relax a supreme one).
+
+Where those live is whatever your caller resolved: in a registered
+multi-project setup (modes B/C) you were handed absolute paths into the
+project subtree, and the shared `docs/` root is the one holding it. In
+**mode A** — no registration, the repo's own `docs/` — there is exactly
+one constitution, `docs/constitution.md`, and this is today's
+single-file check, unchanged. A violation of either is a checklist
+failure (`Returned`, naming the principle).
+
+**Never silently reconcile an apparent contradiction between the two.**
+No hook detects one — ADR 0015 left "the project layer never weakens the
+supreme one" a semantic judgment, and at review time it is yours. When a
+project principle reads as weakening, narrowing or contradicting a
+supreme one:
+
+- Judge the diff against the **supreme** principle. The project text
+  can never make non-compliant code compliant.
+- Attach one clearly labelled line to your reply, alongside (not inside)
+  the Approved/Returned checklist, in this shape:
+  `Constitution conflict: <project constitution path> "<principle id or
+  quoted clause>" appears to weaken <shared constitution path>
+  "<principle id or quoted clause>" — judged against the supreme one;
+  needs a human amendment decision.`
+- That line alone does **not** flip the verdict to `Returned`. The
+  conflict is between two documents, not something the diff's author
+  did, and returning the task can't fix it. It becomes a finding only
+  when *this diff* actually relies on the weaker project principle to do
+  something the supreme one forbids — then it's `Returned` on the
+  supreme principle, with the conflict line still attached.
+
 When your scope is the whole feature diff (called from `/review`, not
 a single task from `/implement`), also check the spec's "Technical
 plan → Definition of Done" line by line before approving — that list
@@ -112,10 +152,12 @@ specialized reviewers for a structural or security-sensitive diff
 where that extra cost earns its keep. If this diff touches auth,
 secrets/credentials, input handling, or anything else security-
 sensitive, also invoke the `security-review` skill regardless of tier —
-if `docs/constitution.md` exists, fold anything it finds that maps to
-one of its Core Principles into your verdict under that principle's
-name; if the file doesn't exist, the skill still runs and still counts,
-nothing here requires that file to be present. **Whichever of these
+if a constitution exists, fold anything it finds that maps to a Core
+Principle of *either* layer into your verdict under that principle's
+name (name the file it came from when it's the project layer, so the
+reader can tell a project addition from the supreme floor); if neither
+file exists, the skill still runs and still counts, nothing here
+requires either file to be present. **Whichever of these
 you invoke, pass it the same explicit scope you were handed** (the
 specific file list or path spec) — these tools default to reviewing
 "the current diff" however they compute that themselves, which for a
@@ -132,3 +174,7 @@ Reply in one of these two formats:
 - **Returned** — an objective list of the checklist items that failed,
   with the specific file/line. No generic praise, no reopening scope
   discussion (that's a spec problem, not a review problem).
+
+Either verdict may carry the `Constitution conflict:` line described
+above, as a separate line after it — it reports a conflict between two
+documents, so it neither replaces nor decides the verdict.

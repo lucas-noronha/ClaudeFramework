@@ -3,6 +3,11 @@ description: On-demand spec-vs-code fidelity sweep for a spec that's already `im
 argument-hint: path to an implemented spec (docs/product/specs/NNNN-name.md)
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing.
+
 Prerequisite: the spec at $ARGUMENTS needs `status: implemented`. If
 it's `draft`/`approved`, there's nothing shipped yet to reconcile —
 point at `/plan`+`/implement` instead. If it's `abandoned`, stop; there

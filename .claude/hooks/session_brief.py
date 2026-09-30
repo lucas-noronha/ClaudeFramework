@@ -8,6 +8,10 @@ import json
 import os
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import resolve_docs_root, state_file_path  # noqa: E402
 
 HANDOFF_CHAR_LIMIT = 800  # bound the cost of a stale/verbose last_assistant_message
 
@@ -15,6 +19,9 @@ HANDOFF_CHAR_LIMIT = 800  # bound the cost of a stale/verbose last_assistant_mes
 def main() -> None:
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
 
+    # git status is about the *code* repo, so it stays on CLAUDE_PROJECT_DIR;
+    # the handoff note and the specs are project content, which lives in
+    # the resolved subtree once this session is registered (ADR 0013).
     try:
         result = subprocess.run(
             ["git", "status", "--short"],
@@ -25,7 +32,7 @@ def main() -> None:
         git_status = ""
 
     handoff = ""
-    handoff_path = os.path.join(project, ".claude", "session-handoff.md")
+    handoff_path = state_file_path(project, "session-handoff.md")
     try:
         with open(handoff_path, encoding="utf-8") as f:
             raw = f.read()
@@ -38,7 +45,7 @@ def main() -> None:
         pass
 
     pending = []
-    specs_dir = os.path.join(project, "docs", "product", "specs")
+    specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
     for path in sorted(glob.glob(os.path.join(specs_dir, "*.md"))):
         if ".validation-" in os.path.basename(path):
             continue

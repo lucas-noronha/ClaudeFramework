@@ -16,6 +16,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import resolve_docs_root, resolve_project_root  # noqa: E402
+
 
 def extract_number(text: str):
     m = re.search(r"(\d+)", text)
@@ -29,8 +32,9 @@ def main() -> None:
         return
 
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
+    root = resolve_project_root(project)
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    docs_dir = os.path.join(project, "docs")
+    docs_dir = resolve_docs_root(project)
 
     normalized = abspath.replace("\\", "/")
     normalized_docs_dir = docs_dir.replace("\\", "/").rstrip("/")
@@ -59,9 +63,9 @@ def main() -> None:
     # CLAUDE.md doesn't exist until /setup-framework renames the
     # template — fall back to the template so this still works pre-setup
     # (including in this framework's own repo).
-    claude_md_path = os.path.join(project, "CLAUDE.md")
+    claude_md_path = os.path.join(root, "CLAUDE.md")
     if not os.path.isfile(claude_md_path):
-        claude_md_path = os.path.join(project, "CLAUDE.md.template")
+        claude_md_path = os.path.join(root, "CLAUDE.md.template")
         if not os.path.isfile(claude_md_path):
             return
 
@@ -71,7 +75,7 @@ def main() -> None:
     except FileNotFoundError:
         return
 
-    rel_doc_path = os.path.relpath(abspath, project).replace("\\", "/")
+    rel_doc_path = os.path.relpath(abspath, root).replace("\\", "/")
 
     # Find the Index table row whose backtick-quoted path matches this
     # doc, then pull the number out of its trailing ~Cost cell.
@@ -88,7 +92,7 @@ def main() -> None:
         return  # e.g. "~fill in" — nothing yet to compare
 
     if index_budget != doc_budget:
-        rel_claude_md = os.path.relpath(claude_md_path, project).replace("\\", "/")
+        rel_claude_md = os.path.relpath(claude_md_path, root).replace("\\", "/")
         print(json.dumps({
             "systemMessage": (
                 f"{rel_claude_md}'s Index table says {rel_doc_path} costs "

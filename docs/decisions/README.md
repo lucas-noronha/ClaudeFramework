@@ -9,14 +9,17 @@ for the format.
 | ID | Title | Status | Supersedes | Superseded by |
 |---|---|---|---|---|
 | 0001 | [Split between subagents, slash commands, skills, and hooks](0001-tooling-agents-commands-skills.md) | accepted | — | — |
-| 0002 | [Global plugin integration: Core vs Optional, absorbed not hard-wired](0002-plugin-integration.md) | proposed | — | — |
-| 0003 | [Wrap `superpowers`' skills across the whole SDD lifecycle, not just `coder`/`reviewer`](0003-superpowers-sdd-wrapping.md) | proposed | — | — |
-| 0004 | [Rebalance `/plan`/`/tasks`; make `/implement` a dependency-aware orchestrator with per-task review](0004-plan-tasks-implement-rebalance.md) | proposed | — | — |
-| 0005 | [Tie a spec's implementation to its own worktree, closing with a pushed branch + PR](0005-spec-worktree-lifecycle.md) | proposed | — | — |
-| 0006 | [`/setup-framework` may draft the architecture blank slots from detected patterns, never finalize them silently](0006-architecture-anamnesis.md) | proposed | — | — |
-| 0007 | [A constitution document, checked but not hard-enforced](0007-constitution-document.md) | proposed | — | — |
-| 0008 | [Specs auto-tag their own area and lineage, never hand-declared](0008-spec-area-lineage.md) | proposed | — | — |
-| 0009 | [`reviewer` reconciles spec vs. diff per task, not as a separate pass](0009-per-task-spec-reconciliation.md) | proposed | — | — |
-| 0010 | [Give `docs/constitution.md` technical teeth, none of it gated on the file existing](0010-constitution-technical-enforcement.md) | proposed | — | — |
-| 0011 | [A raw pipeline-observability event log, no new service](0011-pipeline-metrics.md) | proposed | — | — |
-| 0012 | [`/reconcile`: an on-demand fidelity sweep for a spec already `implemented`](0012-on-demand-reconciliation-sweep.md) | proposed | — | — |
+| 0002 | [Global plugin integration: Core vs Optional, absorbed not hard-wired](0002-plugin-integration.md) | accepted | — | — |
+| 0003 | [Wrap `superpowers`' skills across the whole SDD lifecycle, not just `coder`/`reviewer`](0003-superpowers-sdd-wrapping.md) | accepted | — | — |
+| 0004 | [Rebalance `/plan`/`/tasks`; make `/implement` a dependency-aware orchestrator with per-task review](0004-plan-tasks-implement-rebalance.md) | accepted | — | — |
+| 0005 | [Tie a spec's implementation to its own worktree, closing with a pushed branch + PR](0005-spec-worktree-lifecycle.md) | accepted | — | — |
+| 0006 | [`/setup-framework` may draft the architecture blank slots from detected patterns, never finalize them silently](0006-architecture-anamnesis.md) | accepted | — | — |
+| 0007 | [A constitution document, checked but not hard-enforced](0007-constitution-document.md) | accepted | — | — |
+| 0008 | [Specs auto-tag their own area and lineage, never hand-declared](0008-spec-area-lineage.md) | accepted | — | — |
+| 0009 | [`reviewer` reconciles spec vs. diff per task, not as a separate pass](0009-per-task-spec-reconciliation.md) | accepted | — | — |
+| 0010 | [Give `docs/constitution.md` technical teeth, none of it gated on the file existing](0010-constitution-technical-enforcement.md) | accepted | — | — |
+| 0011 | [A raw pipeline-observability event log, no new service](0011-pipeline-metrics.md) | accepted | — | — |
+| 0012 | [`/reconcile`: an on-demand fidelity sweep for a spec already `implemented`](0012-on-demand-reconciliation-sweep.md) | accepted | — | — |
+| 0013 | [One AI-repo backs several target repos: one shared `.claude/`, per-machine routing plus per-project config](0013-multi-project-ai-repo.md) | accepted | — | 0015 |
+| 0014 | [Three adoption modes chosen upfront, and a user-level `~/.claude` mode with lazy per-project registration](0014-setup-framework-adoption-modes.md) | accepted | — | — |
+| 0015 | [One unified `docs/` tree per AI-repo, and a two-layer constitution](0015-unified-docs-tree-and-layered-constitution.md) | accepted | 0013 | — |

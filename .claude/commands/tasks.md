@@ -3,6 +3,11 @@ description: Mechanically breaks a spec's technical plan into small, ordered, de
 argument-hint: path to the spec (docs/product/specs/NNNN-name.md)
 ---
 
+Before anything else in this command: apply the `project-registration`
+skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
+actually live (registering the project first if it isn't yet), and in
+the common case costs one check and changes nothing.
+
 If the spec at $ARGUMENTS is `status: abandoned`, stop and warn instead
 of breaking a dropped feature into tasks.
 
