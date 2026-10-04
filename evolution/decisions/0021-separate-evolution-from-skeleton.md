@@ -1,7 +1,7 @@
 ---
 doc_type: adr
 id: 0021
-status: proposed
+status: accepted
 date: 2026-10-03
 supersedes: null
 superseded_by: null

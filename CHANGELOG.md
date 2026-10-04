@@ -13,7 +13,7 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
 [0018](evolution/decisions/0018-constitution-baseline-layer.md),
 [0019](evolution/decisions/0019-living-architecture-docs.md),
 [0020](evolution/decisions/0020-proportional-pipeline-cost.md), and
-[0021](evolution/decisions/0021-separate-evolution-from-skeleton.md) for the split below — all `proposed`.
+[0021](evolution/decisions/0021-separate-evolution-from-skeleton.md) for the split below — accepted 2026-10-03; the three specs are `implemented`.
 
 ### Highlights
 

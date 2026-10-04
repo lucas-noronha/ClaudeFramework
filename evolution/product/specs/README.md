@@ -9,6 +9,6 @@ new spec's own `area`/`relates_to` automatically.
 
 | ID | Title | Area | Status | Related to |
 |---|---|---|---|---|
-| 0001 | [Mode C (user-level) hardening — lessons from the first real adoption](0001-mode-c-hardening.md) | adoption-modes | draft | — |
-| 0002 | [Living architecture docs — census, routing frontmatter and verified ground truth](0002-living-architecture-docs.md) | living-docs | draft | 0001 |
-| 0003 | [Proportional pipeline cost — a fast lane and cheaper gates](0003-proportional-pipeline-cost.md) | pipeline-cost | draft | — |
+| 0001 | [Mode C (user-level) hardening — lessons from the first real adoption](0001-mode-c-hardening.md) | adoption-modes | implemented | — |
+| 0002 | [Living architecture docs — census, routing frontmatter and verified ground truth](0002-living-architecture-docs.md) | living-docs | implemented | 0001 |
+| 0003 | [Proportional pipeline cost — a fast lane and cheaper gates](0003-proportional-pipeline-cost.md) | pipeline-cost | implemented | — |

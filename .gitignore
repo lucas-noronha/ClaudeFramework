@@ -17,3 +17,10 @@ tests/__pycache__/
 # OS/editor noise
 .DS_Store
 Thumbs.db
+
+# Per-machine state when the pipeline runs on the framework itself
+# (evolution/ routed as a project subtree — see evolution/README.md)
+evolution/session-handoff.md
+evolution/pipeline-metrics.jsonl
+evolution/settings.local.json
+evolution/.plugin-gap-dismissed.json

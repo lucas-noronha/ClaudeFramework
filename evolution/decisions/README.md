@@ -24,8 +24,8 @@ format.
 | 0014 | [Three adoption modes chosen upfront, and a user-level `~/.claude` mode with lazy per-project registration](0014-setup-framework-adoption-modes.md) | accepted | — | — |
 | 0015 | [One unified `docs/` tree per AI-repo, and a two-layer constitution](0015-unified-docs-tree-and-layered-constitution.md) | accepted | 0013 | — |
 | 0016 | [Per-project disciplines (tests, structural ADRs, security review) as opt-out facts in `CLAUDE.md`](0016-project-disciplines-configuration.md) | proposed | — | — |
-| 0017 | [Mode C installs through a script: namespace prefix, registration gate, one config source, manifest and uninstall](0017-user-level-install-mechanics.md) | proposed | — | — |
-| 0018 | [The constitution gains a framework-owned baseline layer](0018-constitution-baseline-layer.md) | proposed | — | — |
-| 0019 | [Architecture docs get a lifecycle, routing frontmatter and a census engine](0019-living-architecture-docs.md) | proposed | — | — |
-| 0020 | [A fast lane, cheaper gates and a per-project review policy](0020-proportional-pipeline-cost.md) | proposed | — | — |
-| 0021 | [The framework's own specs and ADRs live in `evolution/`, outside the shipped skeleton](0021-separate-evolution-from-skeleton.md) | proposed | — | — |
+| 0017 | [Mode C installs through a script: namespace prefix, registration gate, one config source, manifest and uninstall](0017-user-level-install-mechanics.md) | accepted | — | — |
+| 0018 | [The constitution gains a framework-owned baseline layer](0018-constitution-baseline-layer.md) | accepted | — | — |
+| 0019 | [Architecture docs get a lifecycle, routing frontmatter and a census engine](0019-living-architecture-docs.md) | accepted | — | — |
+| 0020 | [A fast lane, cheaper gates and a per-project review policy](0020-proportional-pipeline-cost.md) | accepted | — | — |
+| 0021 | [The framework's own specs and ADRs live in `evolution/`, outside the shipped skeleton](0021-separate-evolution-from-skeleton.md) | accepted | — | — |
