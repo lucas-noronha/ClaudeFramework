@@ -92,7 +92,7 @@ Pause the command here, before doing any of what it was asked to do.
 Registration is a prerequisite, not a side quest — one question batch,
 one report line.
 
-**Ask once** (a single `AskUserQuestion` call, four questions):
+**Ask once** (a single `AskUserQuestion` call, two questions):
 
 - [ ] **Project name** — default: the repo's own folder name. It becomes
       `<projects_root>/<name>/`. **Reserved, reject and ask again:**
@@ -101,10 +101,6 @@ one report line.
 - [ ] **Build/test command** — offer the detected value as the default:
       `.sln`/`.csproj` → `dotnet test`; a `package.json` `test` script →
       `npm test`; both → the two chained; neither → ask outright.
-- [ ] **Canonical language** — default English.
-- [ ] **Stakeholder language** — offer **"same as canonical — skip the
-      split"** explicitly; then the stakeholder values equal the
-      canonical ones and every split step no-ops.
 
 **Then let the registration script do the mechanical part** — it is
 deterministic and it refuses anything unsafe (reserved name, an existing
@@ -112,14 +108,13 @@ subtree, an unparseable registry). Dry run first, then `--apply`:
 
 ```bash
 python "<scripts_dir>/register_project.py" --repo "$CLAUDE_PROJECT_DIR" \
-  --name <name> --build-test-cmd "<cmd>" --canonical-lang <lang> \
-  --stakeholder-lang <lang> --stakeholder-lang-code <code> [--apply]
+  --name <name> --build-test-cmd "<cmd>" [--apply]
 ```
 
 It creates, under `<projects_root>/<name>/`: an empty `product/specs/`;
 `architecture/` with the shared templates copied unfilled;
 `decisions/0000-adr-template.md` only (this project's ADRs start at
-0001; framework ADR 0013); `project-config.json` (build/test command, languages,
+0001; framework ADR 0013); `project-config.json` (build/test command,
 `main_integration_branch` detected from `origin/HEAD`,
 `review_policy: per-task`, census off); and `CLAUDE.md` from the
 template with every value it can know filled in. It writes the routing
@@ -131,8 +126,7 @@ own principles.
 The script reports which placeholders it left in `CLAUDE.md` (stack,
 database, auth, description). Fill those by detecting from the repo's
 root manifests the way Domain 1 does, asking only what detection can't
-answer. If canonical and stakeholder language are equal, delete the
-template's language-split paragraph, as the template itself says.
+answer.
 
 If the subtree already exists, the script stops. Ask whether it's the
 same project (re-run with `--existing-subtree same`: routing entry only)
@@ -144,13 +138,11 @@ step 4 and then on to the command's actual work.
 ### Bulk registration (framework spec 0001 FR-11)
 
 To register several existing repos in one pass, ask the shared questions
-(languages, and a build/test command only if one fits them all) **once**.
+(a build/test command, only if one fits them all) **once**.
 Then write a plan file and run the same script over it:
 
 ```json
-{"shared": {"canonical_lang": "English", "stakeholder_lang": "English",
-            "stakeholder_lang_code": "en"},
- "projects": [{"repo": "C:/src/orders", "name": "orders"},
+{"projects": [{"repo": "C:/src/orders", "name": "orders"},
               {"repo": "C:/src/billing", "build_test_cmd": "dotnet test Billing.sln"}]}
 ```
 
@@ -190,7 +182,7 @@ For every remaining step of this command:
       for every path you hand to a subagent: it inherits none of this
       reasoning, so give it resolved absolute paths.
 - [ ] **Shared material is at `<shared>`, never in the subtree:**
-      `requirements-template.md`, `validation-summary-template.md`,
+      `requirements-template.md`,
       `workflow/*`, `glossary.md`, the constitution layers. (The
       framework's own ADRs and specs, cited as "framework ADR NNNN", are
       never in a project or a shared root: they live in the framework
@@ -205,14 +197,16 @@ For every remaining step of this command:
       normal, not a setup failure). Hand every existing path to anything
       that checks the constitution.
 - [ ] **Runtime values.** Wherever a command body says
-      `<canonical_lang>`, `<stakeholder_lang>`, `<stakeholder_lang_code>`,
+      `<language>`,
       `<build_test_cmd>` or `<main_integration_branch>` — or, in an
       un-installed copy, the matching double-brace placeholder — use this
-      project's `project_config` value. For the main branch, use the
+      project's `project_config` value (`<language>` comes from the
+      probe's `describe`: the setup's language, framework ADR 0023).
+      For the main branch, use the
       probe's `main_integration_branch`. It comes from
       `project-config.json`, or `origin/HEAD` when unset. `<project name>`
       is the subtree's folder name. Missing or malformed config: say so
-      and ask rather than guessing a language, branch or test command.
+      and ask rather than guessing a branch or test command.
 - [ ] **Framework scripts** (`census.py`, `metrics.py`,
       `register_project.py`) live in the probe's `scripts_dir`.
 - [ ] **Source code stays where it is.** Only the framework's own

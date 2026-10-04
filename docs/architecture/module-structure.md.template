@@ -1,8 +1,8 @@
 ---
 doc_type: architecture
 scope: module-structure
-resumo: What may depend on what in the backend, and where new code goes?
-naoResponde: Frontend structure, or how a single feature works end to end.
+summary: What may depend on what in the backend, and where new code goes?
+notFor: Frontend structure, or how a single feature works end to end.
 status: active
 last_updated: {{DATE}}
 context_budget: ~fill in once written

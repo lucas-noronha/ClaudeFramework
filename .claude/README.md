@@ -43,6 +43,7 @@ it.
 | `researcher.md` | Answers one pointed external/domain question, returns a conclusion not raw research | `architect`, `coder`, on demand |
 | `coder.md` | Implements standard/structural tasks with tests, following the architecture docs and skills relevant to what it's touching | `/implement` (standard/structural tier, single-task or orchestration mode) |
 | `quickfix.md` | `coder`'s cheaper sibling for genuinely trivial, single-file fixes | `/implement` (trivial tier) |
+| `translator.md` | Translates one batch of pristine English framework files into the setup language, into a staging folder, with a given term map and the marker rules (framework ADR 0023). Tools `Read`/`Write`, model `sonnet`; never edits sources or destinations; not installed in mode C | `/setup-framework` setup-language step and upgrade flows |
 | `reviewer.md` | One review pass against an explicit checklist (including the spec's Test plan coverage; the Definition of Done and "## Reconciliation" completeness too, when the scope is the whole feature), after the build/test hook is already green. Per-task scope also appends reconciliation entries to the spec's own "## Reconciliation" section for that task's `FR-NN`/`AC-NN` tags (framework ADR 0009) — the only agent with `Edit` access beyond `coder`/`quickfix`. Invokes the `security-review` skill for a security-sensitive diff, folding a finding into a named Core Principle when `docs/constitution.md` exists (framework ADR 0010). A third **sweep scope**, called only from `/reconcile`, audits an already-`implemented` spec against current code state — no diff, no gate, appends a dated sweep block instead of an Approved/Returned verdict (framework ADR 0012). A fourth **doc-verification scope**, called only from `/update-docs promote`, independently checks a `draft` architecture doc's rules against code (framework ADR 0019). Treats `draft` architecture rules as advisory, `active` ones as binding, and flags "rule may be stale" separately | `/review` (whole-feature diff); also fired automatically inside `/implement`'s orchestration mode, scoped to one task's own files (see framework ADR 0004); `/reconcile` (sweep scope) |
 
 ## commands/ — the pipeline's deterministic entry points
@@ -53,7 +54,7 @@ which stage it's in.
 
 | File | Command | What it does |
 |---|---|---|
-| `spec.md` | `/spec` | Formalizes an idea into a spec file (+ stakeholder-language companion, if configured) from the requirements template. Wraps `superpowers:brainstorming` first, when enabled (see framework ADR 0003), and always checks the described solution actually follows from the underlying business problem before formalizing it — flagging a mismatch as an "unclear, ask" item instead of silently proceeding. Also auto-assigns the spec's own `area`/`relates_to` lineage from the existing spec index (framework ADR 0008, never asked of the human) and checks the request against `docs/constitution.md`, if present |
+| `spec.md` | `/spec` | Formalizes an idea into a spec file from the requirements template. Wraps `superpowers:brainstorming` first, when enabled (see framework ADR 0003), and always checks the described solution actually follows from the underlying business problem before formalizing it — flagging a mismatch as an "unclear, ask" item instead of silently proceeding. Also auto-assigns the spec's own `area`/`relates_to` lineage from the existing spec index (framework ADR 0008, never asked of the human) and checks the request against `docs/constitution.md`, if present |
 | `plan.md` | `/plan` | Triages complexity; trivial stops there, standard writes a short technical plan + Definition of Done + Test plan (numbered against the spec's `FR-NN`/`AC-NN`), structural adds `architect` (+ ADR) plus the same three artifacts and an explicit scope-creep check (see framework ADR 0004). Wraps `superpowers:writing-plans` for standard/structural, when enabled |
 | `tasks.md` | `/tasks` | Mechanically breaks the technical plan into small, dependency-annotated (`Depends on:` per task) `/implement`-sized tasks, distributing the Test plan's entries one-to-one across them (`Tests:` per task) — no technical judgment happens here (framework ADR 0004) |
 | `implement.md` | `/implement` | Single-task mode: routes one task to `quickfix`/`coder`. Orchestration mode (spec path instead of a task): first checks/offers a spec-scoped worktree (framework ADR 0005), then dispatches dependency-ready waves in parallel, one isolated subagent per task (never a worktree per task — isolation stops at the spec), auto-`reviewer` per coder-tier task before checking it off (framework ADR 0004). Wraps `superpowers:dispatching-parallel-agents`/`subagent-driven-development`/`executing-plans` in orchestration mode, when enabled |
@@ -124,7 +125,7 @@ decision (e.g. block an edit) — no LLM call involved. Wired up in
 | `claude_md_index_check.py` | `PostToolUse` (Edit/Write) | Warns (never rewrites) when `CLAUDE.md`'s own "Index" table quotes a different `~Cost` than the doc it points at now declares in its own frontmatter — see the note below on why this one only nudges |
 | `constitution_amendment_check.py` | `PostToolUse` (Edit/Write, constitution files only) | Warns (never blocks) when a constitution changed since the last commit without its `version`/`last_amended` frontmatter moving too — compares against the file's own committed path via `git show HEAD:<path>`, fails open if git isn't available (framework ADR 0007). Since framework ADR 0015 it watches **both** layers independently: the shared `docs/constitution.md` and a project's own `docs/<name>/constitution.md`. "The project one never weakens the supreme one" stays a semantic judgment `reviewer`/`coder` make while reading both — deliberately not a syntactic check |
 | `secret_leak_guard.py` | `PreToolUse` (Edit/Write, repo-wide) | Blocks a write whose new content matches a high-confidence credential pattern (AWS key ID, GitHub/Slack token, a private-key block) — stdlib regex, no scanner dependency, active by default. Never reads `docs/constitution.md`; works the same with or without it (framework ADR 0010) |
-| `validation_sync_check.py` | `PostToolUse` (Edit/Write) | Decides deterministically whether an approved spec's stakeholder-language companion needs re-syncing (language split? approved? requirements hash changed since the companion's `source_hash`?) and only then hands the session an exact instruction with absolute paths. Replaced the always-on Sonnet `agent` hook (framework ADR 0020) |
+| `validation_sync_check.py` | `PostToolUse` (Edit/Write) | Legacy shim for the retired companion sync (framework ADR 0020, retired by framework ADR 0023): no longer wired into the settings templates |
 | `project_tools.py` | `PostToolUse` (Edit/Write) | Runs the formatter / dependency-audit commands a project declares under `project_tools` in its own config; nothing when absent. The shared-install replacement for the two `.example` hooks below (framework ADR 0017) |
 | `auto_format.py.example` | `PostToolUse` (Edit/Write) | Template: runs your stack's formatter/linter on the file just touched. Rename to `auto_format.py` once you've filled in the real commands |
 | `dependency_audit.py.example` | `PostToolUse` (Edit/Write, no-ops unless the file is a recognized dependency manifest) | Template: runs your ecosystem's vulnerability audit (`npm audit`, `pip-audit`, …) when a manifest changes, reports findings as a `systemMessage`. Rename to `dependency_audit.py` once you've trimmed it to your real ecosystem(s) (framework ADR 0010) |
@@ -177,8 +178,7 @@ number until this hook was added to catch it going forward.
 Wires every hook above to its event. Since framework ADR 0020 the build/test gate
 calls `run_build_test.py` (which reads `build_test_cmd` from the
 optional mode A config `.claude/project-config.json` and skips read-only
-subagents), and the stakeholder-language validation sync is the command
-hook `validation_sync_check.py`, not an always-on agent. Rename to
+subagents), and the retired validation sync is no longer wired. Rename to
 `settings.json` once Domain 1 has written `.claude/project-config.json`
 — and, per framework ADR 0010, once `dependency_audit.py.example` is trimmed to
 your real ecosystem(s) and renamed the same way
@@ -253,8 +253,7 @@ classic file — four things differ:
   hook `validation_sync_check.py` decides from the project config and
   resolved paths, and only then asks the session to sync. The original
   note, kept for history: the two validation-summary `agent` hooks resolve their own
-  languages.** Their prompts no longer embed `{{CANONICAL_LANG}}`/
-  `{{STAKEHOLDER_LANG}}`/`{{STAKEHOLDER_LANG_CODE}}`; a step 0 tells the
+  languages.** Their prompts no longer embed the old split-language tokens; a step 0 tells the
   agent to find `projects.local.json` (project root first, then
   `~/.claude` — the same two places Claude Code itself looks for
   `.claude/`), look up its own `CLAUDE_PROJECT_DIR`, read that
@@ -274,6 +273,7 @@ Python, JSON output, dry run by default wherever they write.
 | `migrate_context.py` | Imports an existing doc base into an framework ADR 0015 subtree: folder mapping, per-project numbering, frontmatter, link rewriting, verification; never touches the source |
 | `census.py` + `census_extractors/` | The census engine (framework ADR 0019): inventory at the integration ref, drift, doc mentions, inline probes, ledger with watermark |
 | `metrics.py` | Feature markers for the event log, and the `/metrics` report (framework ADR 0020) |
+| `translation.py` | The setup-language record and its checks (framework ADR 0023); never calls a model. `plan` (new/changed sources and a token estimate), `check` (deterministic fidelity rules on one translated file), `apply` (record a translation, write it to `--dest` or the mode C cache), `sync-index` (copy translated summaries into `CLAUDE.md`'s index rows), `recover-placeholders`, `upgrade-plan` (modes A/B upgrades) and `take-upstream`. English is a no-op with no record |
 | `link_worktree.py` | `WORKTREE [--dry-run]` / `--repair` (framework ADR 0022): in mode B mirrors the AI-repo's `.claude`/`docs`/`CLAUDE.md` links into a worktree plus an anchored `info/exclude`; no-op in modes A and C; refuses a worktree inside the AI-repo. `/worktree` runs it |
 
 The framework's own tests live in `../tests/` (`python -m unittest` from

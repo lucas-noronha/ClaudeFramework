@@ -31,13 +31,9 @@ framework ADR 0001 and the
    `docs/product/specs/NNNN-short-name.md`. One spec per feature. `/spec`
    also auto-tags the spec's own `area` and lineage (`relates_to`) by
    reading the existing spec index — never something you declare by
-   hand — and generates a `.validation-{{STAKEHOLDER_LANG_CODE}}.md`
-   companion, if your project uses a canonical/stakeholder language
-   split — see `../product/validation-summary-template.md` and
-   `governance-and-observability.md`.
+   hand.
 3. **Explicit validation**: the spec only moves from `draft` to
-   `approved` after they review it (directly, or via the
-   validation-summary companion). This is the human-in-the-loop
+   `approved` after they review it. This is the human-in-the-loop
    checkpoint — don't skip it. If the feature gets dropped instead, the
    spec moves to `abandoned` — either way, only a human sets these two,
    never a hook.
@@ -78,11 +74,15 @@ framework ADR 0001 and the
   the content.
 - **`CLAUDE.md` never grows past one screen.** If it's growing, the new
   content probably belongs in a specific doc linked from it.
-- **Canonical language for machine-facing infrastructure, stakeholder
-  language for human-facing business content — only if they actually
-  differ.** Agent/command/skill definitions, architecture docs, and
-  ADRs are read repeatedly by agents and rarely by a human — the
-  canonical language keeps that cheap. Specs get a stakeholder-language
-  companion only when the real recurring human reader doesn't read the
-  canonical language comfortably; if they do, don't introduce the
-  split just for its own sake.
+- **One project language, English structure.** Free text — specs,
+  ADRs, architecture docs, the `.claude/` prompts and agent replies —
+  is in the project's `{{LANGUAGE}}`; frontmatter keys, enumerated
+  values, `## Tasks`/`## Reconciliation`, the reconciliation outcome
+  phrases and `Approved`/`Returned` stay English so hooks and scripts
+  keep working (framework ADR 0023). There is no second "stakeholder"
+  language and no companion file: the stakeholder reads the spec
+  itself. The language is chosen once at setup. English (the default) copies
+  the framework's files as they are, at no cost; any other language has the
+  model translate them at setup, and again on upgrade only for the files
+  that changed upstream. A deterministic check keeps every marker above
+  intact, and a file it cannot verify stays English.

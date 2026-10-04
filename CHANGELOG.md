@@ -96,9 +96,33 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
   the supported path. See
   [spec 0004](evolution/product/specs/0004-worktree-sessions.md) and
   [ADR 0022](evolution/decisions/0022-worktree-sessions.md).
+- **Added — one setup language.** `/setup-framework` asks once for the
+  language (English first, the default). It governs every artifact the
+  pipeline writes, the copied templates, workflow docs, constitution
+  layers and the `.claude/` prompts, and the assistant's replies (the
+  `language` setting plus a `CLAUDE.md` rule). English costs nothing: files
+  are copied as-is. Any other language is translated by the model at setup
+  (new `translator` agent, new `translation.py` with `plan`/`check`/`apply`/
+  `sync-index`/`recover-placeholders`/`upgrade-plan`/`take-upstream`) and, on
+  upgrade, only for files that changed upstream; a file that fails the
+  deterministic fidelity check stays English. Frontmatter keys and
+  enumerated values, `## Tasks`/`## Reconciliation`, reconciliation phrases
+  and `Approved`/`Returned` stay English, so hooks work unchanged (covered by
+  `tests/test_portuguese_project.py`). The mode C installer takes
+  `--language`/`--language-code`; `.claude/.translation-staging/` is
+  gitignored. See
+  [spec 0005](evolution/product/specs/0005-project-language.md) and
+  [ADR 0023](evolution/decisions/0023-setup-language.md).
 
 ### Upgrade notes (read before adopting)
 
+- **The canonical/stakeholder split is retired (ADR 0023).**
+  `stakeholder_lang`, the `.validation-<code>.md` companion and the
+  validation-summary template are gone, and `validation_sync_check.py` is
+  an unwired legacy shim. An existing split keeps working until you pick a
+  language; `/setup-framework` offers the migration. No `.validation-*.md`
+  file is ever deleted. The default routing keys are now `summary`/`notFor`;
+  `resumo`/`naoResponde` are still read as aliases, so no doc needs migrating.
 - **Constitution split (ADR 0018).** Principles I–V moved to the new
   `docs/constitution-baseline.md`, and `docs/constitution.md` (now
   version 2.0.0) is the organization/project layer, numbered from VI.

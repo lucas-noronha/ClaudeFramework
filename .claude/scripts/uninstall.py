@@ -15,6 +15,8 @@
   (AC-03). When something else changed since, only this install's
   entries are removed and the difference is reported. A settings file
   the install created from nothing is deleted once empty.
+- **Translation cache**: `<namespace>/translations/` (the setup language's
+  translated text and record, ADR 0023) is removed whole.
 - **Never touched**: the project subtrees under the projects root (your
   specs, ADRs and architecture docs), and the registry once it routes any
   project. Both are reported so you can delete them by hand if you mean
@@ -69,6 +71,14 @@ def strip_settings(settings: dict, record: dict) -> list:
             allow.remove(rule)
         else:
             missing.append(f"permissions.allow: {rule}")
+    previous = record.get("previous_scalars", {})
+    for key, value in record.get("added_scalars", {}).items():
+        if settings.get(key) != value:
+            missing.append(f"{key}: changed since install, left alone")
+        elif key in previous:
+            settings[key] = previous[key]
+        else:
+            del settings[key]
     for key in sorted(record.get("created_keys", []), key=lambda k: -k.count(".")):
         parts = key.split(".")
         parent = settings
@@ -146,6 +156,9 @@ def main(argv=None) -> int:
     for path in keep:
         print(f"    keep (edited): {path}")
     print(f"  settings.json: {settings_note}")
+    cache_dir = f"{namespace}/translations"
+    if os.path.isdir(cache_dir):
+        print(f"  translation cache: {cache_dir} removed")
     if routed:
         print(f"  registry kept — it routes {len(routed)} project(s); their subtrees are untouched:")
         for repo, subtree in routed.items():
@@ -180,6 +193,7 @@ def main(argv=None) -> int:
                 shutil.move(item["backup"], item["original"])
                 print(f"  restored {item['original']}")
     os.remove(manifest_path)
+    shutil.rmtree(cache_dir, ignore_errors=True)
 
     # Folders this install created, deepest first — only once empty, so a
     # project subtree (or anything else someone added) keeps its parents.

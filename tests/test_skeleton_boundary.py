@@ -5,6 +5,7 @@ changelog, tests) and the skeleton projects receive. See
 Shipped: `.claude/`, `docs/`, `CLAUDE.md.template`, `.mcp.json.example`,
 `.gitignore.framework-additions`. Everything else is this repository's.
 """
+import json
 import os
 import re
 import unittest
@@ -49,6 +50,44 @@ class TestSkeletonBoundary(unittest.TestCase):
             rel = os.path.relpath(full, REPO)
             self.assertEqual(bare.findall(text), [], f"{rel}: say 'framework ADR NNNN' — a bare number collides with the project's own ADRs")
             self.assertEqual(path.findall(text), [], f"{rel}: points into evolution/ content that projects never receive")
+
+
+SPLIT_TOKENS = ("{{CANONICAL_LANG}}", "{{STAKEHOLDER_LANG}}", "{{STAKEHOLDER_LANG_CODE}}")
+ROUTING_TEMPLATES = ("docs/architecture/module-structure.md.template", "docs/architecture/frontend.md.template",
+                     "docs/architecture/overview.md.template", "docs/product/requirements-template.md",
+                     "docs/workflow/living-architecture-docs.md")
+
+
+class TestRepoIsNeverTranslated(unittest.TestCase):
+    """Spec 0005 FR-03/FR-12 (L21): this repo carries no language state and no split tokens."""
+
+    def test_no_record_cache_language_key_or_project_config(self):
+        self.assertFalse(os.path.exists(os.path.join(REPO, ".claude", "translation-record.json")))
+        self.assertFalse(os.path.exists(os.path.join(REPO, ".claude", "project-config.json")))
+        for dirpath, dirnames, _ in os.walk(os.path.join(REPO, ".claude")):
+            dirnames[:] = [d for d in dirnames if d not in ("__pycache__", "worktrees")]
+            self.assertNotIn("translations", dirnames, dirpath)
+        self.assertFalse(os.path.isdir(os.path.join(REPO, "docs", "translations")))
+        for name in ("settings.example.json", "settings.multi-project.json.example"):
+            with open(os.path.join(REPO, ".claude", name), encoding="utf-8") as f:
+                self.assertNotIn("language", json.load(f), name)
+
+    def test_shipped_files_carry_no_split_tokens(self):
+        for full in shipped_text_files():
+            rel = os.path.relpath(full, REPO)
+            with open(full, encoding="utf-8") as f:
+                text = f.read()
+            for token in SPLIT_TOKENS:
+                self.assertNotIn(token, text, rel)
+
+    def test_shipped_templates_use_summary_and_notfor(self):
+        for rel in ROUTING_TEMPLATES:
+            with open(os.path.join(REPO, rel), encoding="utf-8") as f:
+                text = f.read()
+            self.assertIn("\nsummary:", text, rel)
+            self.assertIn("\nnotFor:", text, rel)
+            self.assertNotIn("resumo:", text, rel)
+            self.assertNotIn("naoResponde:", text, rel)
 
 
 class TestInstallerShipsNoEvolution(TempCase):

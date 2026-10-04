@@ -15,6 +15,8 @@ call below is `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/census.py" <comm
 it prints JSON, reads code only at the integration ref, and writes only
 under `<project docs>/architecture/census/`.
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 If the project's config has no `census` block, or `census.enabled` is
 false, say so and stop: this command needs a project that opted in. Any
 extractor works, `none` included.

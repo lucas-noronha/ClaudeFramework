@@ -3,8 +3,7 @@
 `project-registration` skill's step 3 (framework ADR 0014, framework ADR 0017; framework spec 0001
 FR-06, FR-09, FR-11).
 
-    python register_project.py --repo PATH --name NAME --build-test-cmd CMD \\
-        --canonical-lang English --stakeholder-lang English --stakeholder-lang-code en [--apply]
+    python register_project.py --repo PATH --name NAME --build-test-cmd CMD [--apply]
     python register_project.py --plan plan.json [--apply]
 
 Every location — registry, shared docs root, projects root, `CLAUDE.md`
@@ -26,9 +25,15 @@ pipeline at `evolution/`.
 
 Bulk mode (FR-11) takes the shared answers once, in a plan file:
 
-    {"shared": {"canonical_lang": "...", "stakeholder_lang": "...",
-                "stakeholder_lang_code": "...", "build_test_cmd": "optional"},
+    {"shared": {"build_test_cmd": "optional"},
      "projects": [{"repo": "...", "name": "optional", "build_test_cmd": "optional"}]}
+
+No language is asked for or written: the subtree `project-config.json`
+never carries one (framework ADR 0023 section 1); `CLAUDE.md`'s
+`{{LANGUAGE}}` is filled from the setup language. The old
+`--canonical-lang`, `--stakeholder-lang`, `--stakeholder-lang-code` flags and
+`canonical_lang`/`stakeholder_lang`/`stakeholder_lang_code` plan keys are still
+accepted but ignored, with a warning on stderr.
 
 Dry run by default. Prints a JSON report.
 """
@@ -47,6 +52,7 @@ from _project_paths import describe, detect_main_branch, normalize  # noqa: E402
 RESERVED_NAMES = {"workflow", "product", "architecture", "decisions", "glossary"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
+RETIRED_LANGUAGE_KEYS = ("canonical_lang", "stakeholder_lang", "stakeholder_lang_code")
 
 
 def detect_build_test_cmd(repo: str):
@@ -113,11 +119,6 @@ def plan_project(spec: dict, shared: dict, info: dict, existing: str, today: str
         build = detect_build_test_cmd(repo)
     if build is None and not routing_only:
         return None, f"{repo}: no build/test command detected — pass one (an empty string records 'no automated tests')"
-    canonical = value("canonical_lang") or "English"
-    stakeholder = value("stakeholder_lang") or canonical
-    code = value("stakeholder_lang_code") or ("en" if stakeholder.lower() == "english" else None)
-    if not code:
-        return None, f"{repo}: stakeholder language {stakeholder!r} needs a stakeholder_lang_code"
     branch = value("main_integration_branch") or detect_main_branch(repo)
 
     writes = {}
@@ -126,9 +127,6 @@ def plan_project(spec: dict, shared: dict, info: dict, existing: str, today: str
         shared_root = info["shared_docs_root"]
         config = {
             "build_test_cmd": build,
-            "canonical_lang": canonical,
-            "stakeholder_lang": stakeholder,
-            "stakeholder_lang_code": code,
             "main_integration_branch": branch,
             "review_policy": "per-task",
             "census": {"enabled": False, "extractor": value("census_extractor") or "none"},
@@ -147,9 +145,8 @@ def plan_project(spec: dict, shared: dict, info: dict, existing: str, today: str
             with open(template_path, encoding="utf-8") as f:
                 text = f.read()
             known = {
-                "PROJECT_NAME": name, "CANONICAL_LANG": canonical, "STAKEHOLDER_LANG": stakeholder,
-                "STAKEHOLDER_LANG_CODE": code, "BUILD_TEST_CMD": build or "(none — no automated tests)",
-                "DATE": today,
+                "PROJECT_NAME": name, "LANGUAGE": (info.get("language") or {}).get("name") or "English",
+                "BUILD_TEST_CMD": build or "(none — no automated tests)", "DATE": today,
             }
             if branch:
                 known["MAIN_INTEGRATION_BRANCH"] = branch
@@ -173,9 +170,8 @@ def main(argv=None) -> int:
     parser.add_argument("--repo")
     parser.add_argument("--name")
     parser.add_argument("--build-test-cmd")
-    parser.add_argument("--canonical-lang")
-    parser.add_argument("--stakeholder-lang")
-    parser.add_argument("--stakeholder-lang-code")
+    for flag in ("--canonical-lang", "--stakeholder-lang", "--stakeholder-lang-code"):
+        parser.add_argument(flag, help=argparse.SUPPRESS)  # retired (ADR 0023): accepted, ignored, warned about
     parser.add_argument("--main-branch")
     parser.add_argument("--census-extractor")
     parser.add_argument("--plan", help="bulk plan file (see module docstring)")
@@ -186,20 +182,26 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     today = args.today or datetime.date.today().isoformat()
 
+    ignored = [flag for flag, given in (("--canonical-lang", args.canonical_lang), ("--stakeholder-lang", args.stakeholder_lang),
+                                        ("--stakeholder-lang-code", args.stakeholder_lang_code)) if given is not None]
     if args.plan:
         with open(args.plan, encoding="utf-8") as f:
             plan = json.load(f)
         shared, projects = plan.get("shared", {}), plan.get("projects", [])
+        ignored += sorted({key for entry in [shared, *projects] for key in RETIRED_LANGUAGE_KEYS if key in entry})
     elif args.repo:
         shared = {}
         projects = [{
             "repo": args.repo, "name": args.name, "subtree": args.subtree, "build_test_cmd": args.build_test_cmd,
-            "canonical_lang": args.canonical_lang, "stakeholder_lang": args.stakeholder_lang,
-            "stakeholder_lang_code": args.stakeholder_lang_code, "main_integration_branch": args.main_branch,
+            "main_integration_branch": args.main_branch,
             "census_extractor": args.census_extractor,
         }]
     else:
         parser.error("pass --repo or --plan")
+
+    if ignored:
+        print(f"warning: {', '.join(ignored)} ignored — the language is the setup language, never a per-project value "
+              "(framework ADR 0023); the subtree project-config.json carries none", file=sys.stderr)
 
     info = describe(projects[0]["repo"] if projects else ".")
     if not info.get("projects_root") or not info.get("registry"):

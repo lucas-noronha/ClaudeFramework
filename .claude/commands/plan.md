@@ -8,6 +8,8 @@ skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
 actually live (registering the project first if it isn't yet), and in
 the common case costs one check and changes nothing.
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 **Prerequisite — the spec's `status`, settled here.** A technical plan is
 never written over an unvalidated or dead requirement, and approving is
 the human's call. This is the moment the pipeline asks for it, so nobody
@@ -17,21 +19,15 @@ has to remember to edit the frontmatter by hand:
 - **`draft`** → ask, with a single `AskUserQuestion`: "Spec NNNN is still
   `draft`. Approve it now?"
   - **Approve and plan** — say plainly what approving means: the
-    requirements are validated, with the stakeholder when this project
-    has one. If the project has a language split, name the
-    `.validation-<stakeholder_lang_code>.md` companion, and list any of
-    its validation checkboxes still unchecked, or say that the companion
-    doesn't exist, so the user approves knowing that.
-  - **Not yet** — stop here. Say what's left (the stakeholder round, the
-    open questions `/spec` listed) and that the next `/plan` will ask
+    requirements are validated.
+  - **Not yet** — stop here. Say what's left (the open questions `/spec`
+    listed) and that the next `/plan` will ask
     again.
   - **Abandon it** — set `status: abandoned` and stop.
 
   On approval, change only the canonical spec's frontmatter `status:
   draft` → `status: approved` (one edit, nothing else in the file), say
-  so in one line, then continue with step 1. In a language-split
-  project, that edit makes `validation_sync_check.py` ask for the
-  companion to be synced. Do that before planning.
+  so in one line, then continue with step 1.
 - **`abandoned`** → stop and warn. Don't resurrect a dropped feature
   silently. If the user wants it back, they set it to `draft` and run
   `/plan` again.

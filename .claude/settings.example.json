@@ -215,26 +215,6 @@
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
           }
         ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "if": "Edit(docs/product/specs/*)",
-            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/validation_sync_check.py\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "if": "Write(docs/product/specs/*)",
-            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/validation_sync_check.py\""
-          }
-        ]
       }
     ]
   }

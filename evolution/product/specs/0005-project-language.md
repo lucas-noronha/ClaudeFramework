@@ -1,7 +1,7 @@
 ---
 doc_type: spec
 id: 0005
-status: approved
+status: implemented
 area: localization
 relates_to: []
 resumo: How does one language, chosen at setup, govern every artifact the framework writes or copies (docs, templates, agent prompts) and the assistant's replies?
@@ -184,6 +184,60 @@ Expected to need a new framework ADR at `/plan`.
 
 ## Reconciliation
 
+- [task 1] FR-02: matches spec (after one fix)
+- [task 1] NFR-05: matches spec (`legacy_split` requires an actual split; shim uses the same predicate)
+- [task 2] FR-12: matches spec
+- [task 2] AC-07: matches spec as amended (only the two old-default assertions changed; the templates one accepts either key until task 12)
+- [task 2] AC-10: matches spec
+- [task 3] FR-05: matches spec (record schema; `dest`/`output_sha256` only in modes A/B)
+- [task 3] FR-06: matches spec (`plan` lists new and changed only, with a token estimate; replace/keep honoured)
+- [task 3] NFR-06: matches spec (LF-normalized, BOM-free hash; unchanged sources never re-translated)
+- [task 3] AC-09: matches spec (English `plan`/`apply` are no-ops with no record; `en` and `en-US` tested)
+- [task 4] FR-08: matches spec
+- [task 4] FR-11: matches spec
+- [task 4] NFR-04: matches spec
+- [task 4] AC-03: matches spec
+- [task 4] AC-10: matches spec
+- [task 5] FR-06: matches spec (`recover-placeholders`)
+- [task 5] FR-11: matches spec (cross-file step realized as a `sync-index` subcommand run after `apply`)
+- [task 6] FR-06: matches spec
+- [task 6] FR-10: matches spec
+- [task 6] AC-05: matches spec (mode B re-translates changed paths, conflicted or clean; `take-upstream` trusts the caller to pass only listed paths, which `/setup-framework` must state)
+- [task 7] FR-05: matches spec
+- [task 7] FR-08: matches spec
+- [task 7] FR-11: matches spec
+- [task 7] NFR-04: matches spec (prompt also states the check's length-ratio bound and verdict-word count)
+- [task 8] FR-05: matches spec
+- [task 8] FR-06: matches spec
+- [task 8] NFR-01: matches spec
+- [task 8] NFR-02: matches spec
+- [task 8] AC-05: matches spec
+- [task 8] AC-08: matches spec
+- [task 9] FR-07: matches spec
+- [task 9] AC-06: matches spec
+- [task 11] FR-01: matches spec
+- [task 11] NFR-05: matches spec
+- [task 11] AC-01: matches spec
+- [task 13] FR-01: matches spec
+- [task 13] FR-07: matches spec
+- [task 13] FR-10: matches spec
+- [task 13] NFR-06: matches spec
+- [task 13] AC-01: matches spec
+- [task 13] AC-04: matches spec
+- [task 13] AC-06: matches spec
+- [task 14] FR-08: matches spec
+- [task 14] AC-07: matches spec
+- [task 12] FR-03: matches spec
+- [task 12] FR-04: matches spec
+- [task 12] FR-07: matches spec
+- [task 12] FR-08: matches spec
+- [task 12] FR-11: matches spec
+- [task 12] FR-12: matches spec
+- [task 10] FR-03: matches spec
+- [task 10] NFR-05: matches spec (shim acts only with split keys and no setup language, never deletes companions, fails open)
+- [task 10] AC-02: matches spec
+- [task 10] AC-08: matches spec
+
 ## Technical plan
 
 **Tier:** structural. **ADR:** framework ADR 0023
@@ -364,17 +418,17 @@ by agents). No task touches sensitive data or a new table. Shared files that for
 `_project_paths.py` (tasks 1, 2), `translation.py` (3–6), `install_user_level.py` (8, 9, 11),
 command prompts (10, 12, 13). Every task follows framework ADR 0023.
 
-- [ ] 1. **Language lookup** — hooks/scripts: `_project_paths.py` `setup_language()` (`framework.json` → `<framework_home>/project-config.json` → legacy `canonical_lang` → English) and `describe`'s `language` {name, code, source} and `legacy_split`. — Depends on: none — Tests: L01, L02
-- [ ] 2. **Routing keys** — hooks/scripts: `_project_paths.routing_keys()` (primary `summary`/`notFor`, aliases `resumo`/`naoResponde`, project override replaces the primary, primary wins); `frontmatter_check.py` and `claude_md_index_check.py` use it, and nudges name the primary key; update the two old-default assertions in `tests/test_pipeline_cost.py` per the AC-07 deviation. — Depends on: 1 — Tests: L04, L05
-- [ ] 3. **`translation.py` core** — hooks/scripts: new `.claude/scripts/translation.py` (stdlib): the record (LF-normalized `source_sha256`, `status`, `policy`, A/B `dest`/`output_sha256`, term map, placeholder map), `plan` (new and changed only, with a token estimate), `apply` (`replace` vs `keep`), and the English no-op. Uses Portuguese fixtures, never a model. — Depends on: none — Tests: L06, L07, L11
-- [ ] 4. **`translation.py check`** — hooks/scripts: the deterministic fidelity check of ADR 0023 §5. Frontmatter keys and order invariant, values invariant except the allow-list, frontmatter-shaped fences; headings, ordinals, checkboxes, tables and the length ratio; byte-identical code blocks except `markdown`/`md`/`text`; identical multisets of inline code, placeholders and tokens, `/commands`, ids, links, HTML comments and `framework ADR|spec NNNN`; the English literals. A failure stays English, recorded `status: english` with its reasons. — Depends on: 3 — Tests: L08, L09, L10
-- [ ] 5. **Cross-file step and placeholder recovery** — hooks/scripts: `apply` translates `CLAUDE.md.template` last and copies each translated summary into its index row; `recover-placeholders` rebuilds the map by matching pristine sources (with `{{NAME}}` as capture groups) and reports non-matches. — Depends on: 4 — Tests: L12, L13
-- [ ] 6. **Upgrade support** — hooks/scripts: `translation.py` support for the mode A upgrade (untouched output → retranslate, edited → report, `keep` untouched, deletions reported only) and the mode B merge (every recorded path whose `source_sha256` at `MERGE_HEAD` changed, conflicted or not; failure keeps upstream English). — Depends on: 5 — Tests: L14, L15
-- [ ] 7. **`translator` agent** — commands/docs: new `.claude/agents/translator.md` (model sonnet, tools Read/Write). It translates pristine English into staging with the term map and the marker rules, and never edits sources. — Depends on: 4 — Tests: none (prose; checked by `reviewer`)
-- [ ] 8. **Installer: language and cache** — hooks/scripts: `install_user_level.py` `--language`/`--language-code` (kept across upgrades, into `framework.json`); `build_plan` reads the fresh cache, `english`-status files read the source, and a stale or missing entry aborts before any write; manifest `source_sha256`/`translation`; the `translator` agent excluded from the install; `uninstall.py` removes `translations/`. English output byte-identical. — Depends on: 1, 3 — Tests: L16, L17, L18
-- [ ] 9. **Installer: `language` setting** — hooks/scripts: `merge`/`unmerge` learn recorded scalars (absent → set, `added_scalars`; different → shown, overwritten only with `--set-language-setting`; removed only while unchanged; byte restore kept). — Depends on: 8 — Tests: L19
-- [ ] 10. **Retire the split (prose, hook, templates)** — commands/docs plus one hook. Remove `/spec` step 7 and its reminder, `/plan`'s stakeholder round, `/quick`'s mention, and the registration skill's language questions, bulk keys and tokens. Delete `docs/product/validation-summary-template.md`. Remove the split prose in `CLAUDE.md.template`. Unwire `validation_sync_check.py` in both settings templates, and turn it into the legacy shim. Never delete a `.validation-*.md`. — Depends on: none — Tests: L20
-- [ ] 11. **Retire the split (scripts)** — hooks/scripts: `register_project.py` neither asks for nor writes a language; the three stakeholder flags and legacy plan keys are hidden, accepted and ignored with a warning. Also remove the installer's split `RUNTIME_TOKENS`, the validation template entry and its shared-path regex. — Depends on: 9, 10 — Tests: L03
-- [ ] 12. **Shipped material** — commands/docs: `{{CANONICAL_LANG}}` → `{{LANGUAGE}}`; `summary`/`notFor` in every shipped template, workflow doc and prompt; every prompt that makes the model write an artifact or frontmatter says free text is in `<language>`, while keys, enumerated values, `## Tasks`/`## Reconciliation`, reconciliation phrases and `Approved`/`Returned` stay English; `CLAUDE.md.template` gets the reply/reasoning rule. `test_skeleton_boundary.py` gains the boundary asserts. — Depends on: 2, 10 — Tests: L21
-- [ ] 13. **`/setup-framework`** — commands/docs: Domain 1 language question (English first; non-English → `plan` estimate, confirm, translate, then resolve, record, `language` setting); Domain 5 asks only while the AI-repo config has none, and adds `language` to the shared settings; Domain 6 batch gains the language (`--language`); the mode A upgrade and mode B merge-retranslate flows; migration offered when `legacy_split`. — Depends on: 6, 7, 9, 11, 12 — Tests: none (prose; checked by `reviewer`)
-- [ ] 14. **Portuguese-project hook test and docs** — hooks/scripts tests plus docs: a Portuguese fixture project exercising `spec_status_sync`, `spec_index`, `decision_index`, the reconciliation phrases and the reviewer verdict; `.claude/README.md` rows (`translation.py`, `translator`), the relevant workflow docs, and a `CHANGELOG.md` entry. — Depends on: 13 — Tests: L22
+- [x] 1. **Language lookup** — hooks/scripts: `_project_paths.py` `setup_language()` (`framework.json` → `<framework_home>/project-config.json` → legacy `canonical_lang` → English) and `describe`'s `language` {name, code, source} and `legacy_split`. — Depends on: none — Tests: L01, L02
+- [x] 2. **Routing keys** — hooks/scripts: `_project_paths.routing_keys()` (primary `summary`/`notFor`, aliases `resumo`/`naoResponde`, project override replaces the primary, primary wins); `frontmatter_check.py` and `claude_md_index_check.py` use it, and nudges name the primary key; update the two old-default assertions in `tests/test_pipeline_cost.py` per the AC-07 deviation. — Depends on: 1 — Tests: L04, L05
+- [x] 3. **`translation.py` core** — hooks/scripts: new `.claude/scripts/translation.py` (stdlib): the record (LF-normalized `source_sha256`, `status`, `policy`, A/B `dest`/`output_sha256`, term map, placeholder map), `plan` (new and changed only, with a token estimate), `apply` (`replace` vs `keep`), and the English no-op. Uses Portuguese fixtures, never a model. — Depends on: none — Tests: L06, L07, L11
+- [x] 4. **`translation.py check`** — hooks/scripts: the deterministic fidelity check of ADR 0023 §5. Frontmatter keys and order invariant, values invariant except the allow-list, frontmatter-shaped fences; headings, ordinals, checkboxes, tables and the length ratio; byte-identical code blocks except `markdown`/`md`/`text`; identical multisets of inline code, placeholders and tokens, `/commands`, ids, links, HTML comments and `framework ADR|spec NNNN`; the English literals. A failure stays English, recorded `status: english` with its reasons. — Depends on: 3 — Tests: L08, L09, L10
+- [x] 5. **Cross-file step and placeholder recovery** — hooks/scripts: `apply` translates `CLAUDE.md.template` last and copies each translated summary into its index row; `recover-placeholders` rebuilds the map by matching pristine sources (with `{{NAME}}` as capture groups) and reports non-matches. — Depends on: 4 — Tests: L12, L13
+- [x] 6. **Upgrade support** — hooks/scripts: `translation.py` support for the mode A upgrade (untouched output → retranslate, edited → report, `keep` untouched, deletions reported only) and the mode B merge (every recorded path whose `source_sha256` at `MERGE_HEAD` changed, conflicted or not; failure keeps upstream English). — Depends on: 5 — Tests: L14, L15
+- [x] 7. **`translator` agent** — commands/docs: new `.claude/agents/translator.md` (model sonnet, tools Read/Write). It translates pristine English into staging with the term map and the marker rules, and never edits sources. — Depends on: 4 — Tests: none (prose; checked by `reviewer`)
+- [x] 8. **Installer: language and cache** — hooks/scripts: `install_user_level.py` `--language`/`--language-code` (kept across upgrades, into `framework.json`); `build_plan` reads the fresh cache, `english`-status files read the source, and a stale or missing entry aborts before any write; manifest `source_sha256`/`translation`; the `translator` agent excluded from the install; `uninstall.py` removes `translations/`. English output byte-identical. — Depends on: 1, 3 — Tests: L16, L17, L18
+- [x] 9. **Installer: `language` setting** — hooks/scripts: `merge`/`unmerge` learn recorded scalars (absent → set, `added_scalars`; different → shown, overwritten only with `--set-language-setting`; removed only while unchanged; byte restore kept). — Depends on: 8 — Tests: L19
+- [x] 10. **Retire the split (prose, hook, templates)** — commands/docs plus one hook. Remove `/spec` step 7 and its reminder, `/plan`'s stakeholder round, `/quick`'s mention, and the registration skill's language questions, bulk keys and tokens. Delete `docs/product/validation-summary-template.md`, and remove its installer entry and shared-path regex in the same task, so the install tests stay green (moved here from task 11). Remove the split prose in `CLAUDE.md.template`. Unwire `validation_sync_check.py` in both settings templates, and turn it into the legacy shim. Never delete a `.validation-*.md`. — Depends on: none — Tests: L20
+- [x] 11. **Retire the split (scripts)** — hooks/scripts: `register_project.py` neither asks for nor writes a language; the three stakeholder flags and legacy plan keys are hidden, accepted and ignored with a warning. Also remove the installer's split `RUNTIME_TOKENS`. And make the `language` overwrite non-sticky: an upgrade without `--set-language-setting` never overwrites a value the user changed (found in task 9's review). — Depends on: 9, 10 — Tests: L03
+- [x] 12. **Shipped material** — commands/docs: `{{CANONICAL_LANG}}` → `{{LANGUAGE}}`; `summary`/`notFor` in every shipped template, workflow doc and prompt; every prompt that makes the model write an artifact or frontmatter says free text is in `<language>`, while keys, enumerated values, `## Tasks`/`## Reconciliation`, reconciliation phrases and `Approved`/`Returned` stay English; `CLAUDE.md.template` gets the reply/reasoning rule. Also drop the stale `.validation-` companion prose in `docs/product/requirements-template.md` (found in task 10's review). `test_skeleton_boundary.py` gains the boundary asserts. — Depends on: 2, 10 — Tests: L21
+- [x] 13. **`/setup-framework`** — commands/docs: Domain 1 language question (English first; non-English → `plan` estimate, confirm, translate, then resolve, record, `language` setting); Domain 5 asks only while the AI-repo config has none, and adds `language` to the shared settings; Domain 6 batch gains the language (`--language`); the mode A upgrade and mode B merge-retranslate flows (`take-upstream` only for paths `upgrade-plan` listed); migration offered when `legacy_split`. Also drop `product/validation-summary-template.md` from mode B's shared-root bootstrap check (Domain 5, "five" → "four"), which would otherwise stop mode B setup (found in task 10's review). — Depends on: 6, 7, 9, 11, 12 — Tests: none (prose; checked by `reviewer`)
+- [x] 14. **Portuguese-project hook test and docs** — hooks/scripts tests plus docs: a Portuguese fixture project exercising `spec_status_sync`, `spec_index`, `decision_index`, the reconciliation phrases and the reviewer verdict; `.claude/README.md` rows (`translation.py`, `translator`), the relevant workflow docs, and a `CHANGELOG.md` entry. — Depends on: 13 — Tests: L22

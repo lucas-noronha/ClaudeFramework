@@ -12,7 +12,7 @@ happened in practice: several docs' context_budget frontmatter changed
 without anyone remembering to update CLAUDE.md's copy of the number.
 
 The same row also gets compared against the doc's routing summary
-(`resumo` by default, configurable via `routing_keys`, framework ADR 0019): index
+(`summary` by default, `resumo` still read; configurable via `routing_keys`, framework ADR 0019): index
 tables copy it verbatim, and the doc wins when the two diverge.
 """
 import json
@@ -21,14 +21,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import hook_should_run, load_project_config, read_hook_input, resolve_docs_root, resolve_project_root  # noqa: E402
-
-
-def routing_summary_key(project: str) -> str:
-    configured = load_project_config(project).get("routing_keys")
-    if isinstance(configured, dict) and isinstance(configured.get("summary"), str) and configured["summary"]:
-        return configured["summary"]
-    return "resumo"
+from _project_paths import hook_should_run, read_hook_input, resolve_docs_root, resolve_project_root, routing_keys  # noqa: E402
 
 
 def extract_number(text: str):
@@ -72,8 +65,13 @@ def main() -> None:
     frontmatter = fm_match.group(1)
     budget_match = re.search(r"^context_budget:\s*(.+)$", frontmatter, re.MULTILINE)
     doc_budget = extract_number(budget_match.group(1)) if budget_match else None
-    summary_key = routing_summary_key(project)
-    summary_match = re.search(rf"^{re.escape(summary_key)}:\s*(.+)$", frontmatter, re.MULTILINE)
+    summary = routing_keys(project)["summary"]
+    summary_key = summary["key"]
+    summary_match = None
+    for name in [summary_key, *summary["aliases"]]:  # the primary wins over an alias
+        summary_match = re.search(rf"^{re.escape(name)}:\s*(.+)$", frontmatter, re.MULTILINE)
+        if summary_match:
+            break
     doc_summary = summary_match.group(1).strip().strip("\"'") if summary_match else None
     if doc_budget is None and not doc_summary:
         return  # nothing this hook compares

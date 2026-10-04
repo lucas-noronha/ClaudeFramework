@@ -1,8 +1,8 @@
 ---
 doc_type: architecture
 scope: frontend
-resumo: What may import what in the frontend?
-naoResponde: Backend layering, or any one feature's behaviour.
+summary: What may import what in the frontend?
+notFor: Backend layering, or any one feature's behaviour.
 status: active
 last_updated: {{DATE}}
 context_budget: ~fill in once written

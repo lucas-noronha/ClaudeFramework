@@ -55,6 +55,7 @@ and framework ADR 0018):
   Never add an inventory count ("the 12 handlers") to any doc.
 
 When implementing:
+- Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
 - If the task names specific `Test` entries (from `/plan`'s Test plan,
   distributed by `/tasks`), those are exactly the unit tests you write
   for this task — implement each one, tagged with its `FR-NN`/`AC-NN`

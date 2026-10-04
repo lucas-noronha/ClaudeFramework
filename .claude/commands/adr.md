@@ -11,6 +11,8 @@ the common case costs one check and changes nothing.
 This is the "we just decided something, write it down" path — use it
 instead of `/plan` when there's no spec/task driving the decision.
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 1. Delegate to the `architect` subagent with the decision description
    in $ARGUMENTS. Have it follow the `adr-writing` skill's format and
    draft the file at `docs/decisions/000N-short-name.md` (next

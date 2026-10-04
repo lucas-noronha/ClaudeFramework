@@ -3,8 +3,8 @@ doc_type: workflow
 scope: living-architecture-docs
 status: active
 last_updated: {{DATE}}
-resumo: How do architecture docs stay true to the code, and what may an agent take from them?
-naoResponde: What any particular project's architecture is — read that project's own architecture docs.
+summary: How do architecture docs stay true to the code, and what may an agent take from them?
+notFor: What any particular project's architecture is — read that project's own architecture docs.
 related: [../architecture/module-structure.md.template]
 context_budget: ~1100 tokens
 ---
@@ -44,14 +44,14 @@ Every architecture doc carries two routing keys, so a reader (human or
 agent) can decide whether to open it from the index alone:
 
 ```yaml
-resumo: The one question this doc answers.
-naoResponde: When opening it is wasted (optional).
+summary: The one question this doc answers.
+notFor: When opening it is wasted (optional).
 ```
 
-Index tables (`CLAUDE.md`'s, a project's own) copy `resumo` verbatim,
+Index tables (`CLAUDE.md`'s, a project's own) copy `summary` verbatim,
 and on divergence the doc wins. `claude_md_index_check.py` nudges when
 a row drifts, and `frontmatter_check.py` nudges when an architecture doc
-has no `resumo`. The key names are configurable per project through
+has no `summary`. The key names are configurable per project through
 `routing_keys` in its config, e.g.
 `"routing_keys": {"summary": "answers", "not_for": "not_for"}`.
 

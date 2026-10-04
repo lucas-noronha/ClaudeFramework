@@ -14,7 +14,6 @@ format.
 | 0004 | [Rebalance `/plan`/`/tasks`; make `/implement` a dependency-aware orchestrator with per-task review](0004-plan-tasks-implement-rebalance.md) | accepted | — | — |
 | 0005 | [Tie a spec's implementation to its own worktree, closing with a pushed branch + PR](0005-spec-worktree-lifecycle.md) | accepted | — | — |
 | 0006 | [`/setup-framework` may draft the architecture blank slots from detected patterns, never finalize them silently](0006-architecture-anamnesis.md) | accepted | — | — |
-| 0007 | [A constitution document, checked but not hard-enforced](0007-constitution-document.md) | accepted | — | — |
 | 0008 | [Specs auto-tag their own area and lineage, never hand-declared](0008-spec-area-lineage.md) | accepted | — | — |
 | 0009 | [`reviewer` reconciles spec vs. diff per task, not as a separate pass](0009-per-task-spec-reconciliation.md) | accepted | — | — |
 | 0010 | [Give `docs/constitution.md` technical teeth, none of it gated on the file existing](0010-constitution-technical-enforcement.md) | accepted | — | — |

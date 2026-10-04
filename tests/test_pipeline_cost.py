@@ -162,12 +162,12 @@ class TestMetrics(TempCase):
 
 
 class TestRoutingFrontmatter(TempCase):
-    def test_ac06_missing_resumo_is_nudged_with_configurable_key(self):
+    def test_ac06_missing_summary_is_nudged_with_configurable_key(self):
         repo = self.make_repo("app")
         doc = os.path.join(repo, "docs", "architecture", "module-structure.md")
         self.write(doc, "---\r\ndoc_type: architecture\r\nstatus: active\r\ncontext_budget: ~100 tokens\r\n---\r\n# x\r\n")
         result = self.hook(HOOKS, "frontmatter_check.py", {"tool_input": {"file_path": doc}}, repo)
-        self.assertIn("`resumo`", result.stdout)
+        self.assertIn("`summary`", result.stdout)
         self.write(os.path.join(repo, ".claude", "project-config.json"), json.dumps({"routing_keys": {"summary": "answers"}}))
         result = self.hook(HOOKS, "frontmatter_check.py", {"tool_input": {"file_path": doc}}, repo)
         self.assertIn("`answers`", result.stdout)
@@ -178,8 +178,10 @@ class TestRoutingFrontmatter(TempCase):
         for rel in ("docs/architecture/module-structure.md.template", "docs/architecture/frontend.md.template",
                     "docs/architecture/overview.md.template", "docs/product/requirements-template.md"):
             text = self.read(os.path.join(REPO, rel))
-            self.assertIn("resumo:", text, rel)
-            self.assertIn("naoResponde:", text, rel)
+            self.assertIn("\nsummary:", text, rel)
+            self.assertIn("\nnotFor:", text, rel)
+            self.assertNotIn("resumo:", text, rel)
+            self.assertNotIn("naoResponde:", text, rel)
 
     def test_claude_md_row_must_copy_resumo(self):
         repo = self.make_repo("app")

@@ -26,8 +26,8 @@ on its own — avoid it.
 
 | # | You type | What happens | When to move on |
 |---|---|---|---|
-| 1 | `/spec <short description of the idea>` | Generates a draft at `docs/product/specs/NNNN-*.md` (+ a stakeholder-language companion, if your project uses that split) | Whenever the spec doesn't exist yet |
-| 2 | *(outside the chat)* Send the spec (or its companion) to your stakeholder | — | Nothing to edit: the next `/plan` asks whether to approve the spec and sets `status: approved` itself (or `abandoned` if the feature gets dropped) |
+| 1 | `/spec <short description of the idea>` | Generates a draft at `docs/product/specs/NNNN-*.md` | Whenever the spec doesn't exist yet |
+| 2 | *(outside the chat)* Send the spec to your stakeholder | — | Nothing to edit: the next `/plan` asks whether to approve the spec and sets `status: approved` itself (or `abandoned` if the feature gets dropped) |
 | 3 | `/plan docs/product/specs/NNNN-*.md` | Triage classifies; trivial stops there, standard gets a short technical plan, structural gets `architect` (+ ADR if needed) plus the same plan | If an ADR was proposed, you approve it manually (`status: accepted`) before moving on |
 | 4 | `/tasks docs/product/specs/NNNN-*.md` | Mechanically breaks the plan into small, dependency-annotated tasks | Always |
 | 5 | `/implement docs/product/specs/NNNN-*.md` | First offers to isolate this spec in its own worktree (see below); then orchestrates every remaining task: dependency-ordered waves, one subagent per task, parallel within a wave, automatic `reviewer` pass per coder-tier task | Or `/implement <task number>` for just one task — see below |

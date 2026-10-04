@@ -35,3 +35,9 @@ docs/*/.plugin-gap-dismissed.json
 docs/*/.worktree-state/
 # Claude Code's own worktrees (mode B); never project content.
 .claude/worktrees/
+
+# Setup-language translation scratch (framework ADR 0023): pristine English
+# snapshot, staged translations, term and placeholder maps. Rebuilt on
+# demand by /setup-framework; the committed record is
+# .claude/translation-record.json, not this folder.
+.claude/.translation-staging/

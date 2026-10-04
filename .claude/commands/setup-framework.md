@@ -108,6 +108,101 @@ layout. Say that out loud when you ask.
 5. Domain 7 (where spec worktrees live) closes modes A and B. Mode C
    asks the same question inside Domain 6's batch instead, because there
    the installer owns the config file it lands in.
+6. An **upgrade** of an already-adopted setup, or **migrating** a setup
+   `describe` reports with `legacy_split: true`, goes to "Upgrading and
+   migrating" at the end of this command instead of the domains above.
+
+## Setup language — one question, one translation pass (Domains 1, 5, 6)
+
+Goal: one language per setup (framework spec 0005, framework ADR 0023).
+It governs every artifact the framework generates or copies and the
+assistant's replies. Domains 1, 5 and 6 reference this section instead
+of repeating it; the upgrade flows below reuse its translation steps.
+
+**Ask** (`AskUserQuestion`, one question): the setup language as name +
+BCP 47 code, **English first and default** (`English`/`en`), plus the
+user's own choice (e.g. `Portuguese`/`pt-BR`). In modes B and C it
+covers every project behind the setup: registering or linking another
+project never asks again. English (`en`, `en-*`) needs **no translation
+pass and no record**: the copied files stay as they are.
+
+**Translate** (non-English only). `translation.py` below is
+`.claude/scripts/translation.py` of the checkout this run is from. It
+never calls a model; the `translator` agent does, and Python checks.
+
+1. **Pristine sources.** Translation always starts from untouched
+   English, never from a previous translation or resolved text.
+   - Mode A: before any placeholder is resolved, snapshot the copied
+     `.claude/`, `docs/` and `CLAUDE.md.template` into
+     `.claude/.translation-staging/en/` (same relative paths). `--source`
+     below is that folder. The staging folder is gitignored.
+   - Mode B: snapshot upstream's files the AI-repo was cloned from with
+     `git archive <upstream ref> .claude docs CLAUDE.md.template` into
+     the same folder; confirm the ref (`AskUserQuestion`).
+   - Mode C: `--source` is this repository checkout; staged output goes
+     to `.claude/.translation-staging/out/`. Only what the installer
+     reads matters: `.claude/agents|commands|skills`, `docs/` and
+     `CLAUDE.md.template`, never `translator.md` or `setup-framework.md`,
+     which it does not install, and nothing under `evolution/`.
+   The record is `--record .claude/translation-record.json` (modes A/B,
+   committed) or `<namespace>/translations/record.json` (mode C).
+2. **Plan and cost.** `python translation.py plan --source <src>
+   --record <record> --language-code <code>` plus
+   `--keep docs/constitution.md --keep docs/glossary.md.template` (user
+   layers, translated only on create). Keep only the in-scope paths,
+   sum their `estimated_tokens` and **state that estimate** (heuristic
+   `token_heuristic`, `translator` runs on a cheaper model, about 40
+   files). `AskUserQuestion`: translate, pick English instead, or pick
+   another language. Nothing is translated before this confirmation.
+3. **Term map first.** Draft framework vocabulary → target terms (spec,
+   plan, tasks, ADR, constitution, worktree, census, reconciliation,
+   review, drift, ...), show it, confirm it, and save it as
+   `.claude/.translation-staging/terms.json`. Every batch gets it.
+4. **Translate.** Dispatch the `translator` agent in parallel batches
+   (a handful of files each, balanced by estimated tokens), giving
+   each: the language, `terms.json`, the staging folder
+   (`.claude/.translation-staging/out/`), and its files. It never edits
+   sources. Translate `.claude/commands/setup-framework.md` itself last
+   in mode A and B (this very file is being read).
+5. **Check each staged file:** `python translation.py check --source
+   <src>/<path> --translated <out>/<path>`. A failed or skipped file
+   **stays English**: `apply --status english --reason "<the check's
+   reason>"` (no `--staged`), and say so in the close-out.
+6. **Apply** each passing file, **one at a time**: `python
+   translation.py apply --source <src> --record <record> --language
+   <name> --language-code <code> --path <path> --staged <out>/<path>
+   --terms .claude/.translation-staging/terms.json` with
+   `--policy keep` for the two user-layer files above.
+   - Modes A/B add `--dest <the file's path in the repo>`: mode A
+     writes in place over the copied English, mode B over the AI-repo's
+     file (use its current, renamed name).
+   - Mode C adds **no** `--dest`: `apply` fills the cache,
+     `<namespace>/translations/<path>` (index `record.json`), which the
+     installer reads.
+7. **Index fix-up.** Once every file is applied, run `python
+   translation.py sync-index --claude-md <repo>/CLAUDE.md.template --root
+   <repo>` (modes A/B) so each `CLAUDE.md` index row carries its doc's
+   translated summary. Mode C: run it on the cache copy
+   (`--claude-md <cache>/CLAUDE.md.template --root <cache>`).
+8. **Placeholders and record (modes A/B).** Placeholders are resolved
+   after translation, as Domain 1 steps 2-5 say (mode B: see Domain 5's
+   language step). Then write the placeholder map (NAME → resolved value,
+   including `LANGUAGE`) to `.claude/.translation-staging/placeholders.json`
+   and refresh each translated `replace` file's entry so `output_sha256`
+   is the post-resolution hash: re-run step 6's `apply` with
+   `--staged <the resolved file> --dest <the same file>` and
+   `--placeholders .claude/.translation-staging/placeholders.json`.
+   Failed (English) files get their placeholders resolved the same way.
+   Show the record and confirm before the final write; it is committed.
+9. **Settings.** Non-English only: Claude Code's `language` setting
+   (`"language": "<name>"`), at the scope that matches the mode — mode A
+   `.claude/settings.json` (Domain 1 step 8), mode B the shared
+   `<ai-repo>/.claude/settings.json` (Domain 5 step 9), mode C the
+   installer merges it (Domain 6 step 3).
+
+Machine-parsed markers never change in any language: frontmatter keys
+and enumerated values, `## Tasks`/`## Reconciliation`, FR/NFR/AC/T ids,
+file names, commands and `{{PLACEHOLDER}}`s. `check` enforces it.
 
 ## Domain 1 — Bootstrap this project from the copied skeleton
 
@@ -130,6 +225,9 @@ template/example files that are ready to become the real thing.
      (`{{HOOKS_DIR}}`, `{{PYTHON}}`, `{{PROJECTS_ROOT_PERMISSION_PATH}}`)
      — a template only Domain 5 and the user-level installer resolve,
      never Domain 1.
+   - `{{LANGUAGE}}` **only when Domain 1 runs as Domain 5's prerequisite
+     pass** (mode B): that pass never asks the language; Domain 5's
+     language step resolves it. Steps 4 and 7 skip it there.
 
    The user-level installer (Domain 6) checks its own output against
    this same list and refuses to install if anything else survives
@@ -164,12 +262,11 @@ template/example files that are ready to become the real thing.
    - `{{SOLUTION_FILE}}` — the `.sln` filename found, if any.
    - `{{FRONTEND_LINTER}}` — detect an eslint/prettier/biome config
      file; otherwise ask.
-   - `{{CANONICAL_LANG}}` — ask, default suggestion English.
-   - `{{STAKEHOLDER_LANG}}` / `{{STAKEHOLDER_LANG_CODE}}` — ask, with
-     "same as canonical — skip the split" as an explicit option; if
-     chosen, set both to the canonical language/code (the
-     canonical/stakeholder split's own steps already no-op when
-     they're equal).
+   - `{{LANGUAGE}}` — the setup language, asked once by the **Setup
+     language** procedure above (English first and default). If it is
+     not English, run that procedure's translation steps now, *before*
+     applying any value (step 4): placeholders survive translation
+     verbatim, so steps 1-4 then run unchanged on the translated files.
    - `{{ONE_TO_TWO_SENTENCE_PROJECT_DESCRIPTION}}`,
      `{{FRONTEND_STACK}}`, `{{BACKEND_STACK}}`, `{{DATABASE}}`,
      `{{AUTH_PROVIDER}}`, `{{ONE_LINE_SYSTEM_SHAPE}}` — try a light
@@ -216,16 +313,15 @@ template/example files that are ready to become the real thing.
    project config (framework ADR 0020). It's committed, like a mode B/C subtree's
    `project-config.json`, and it's what the hooks and scripts read here:
    the build/test gate (`run_build_test.py`, which `settings.json` now
-   calls instead of holding the command literally), the validation-
-   summary pre-check, the census, `review_policy`, routing-key names and
-   per-project tools. Show it and confirm before writing:
+   calls instead of holding the command literally), the setup language,
+   the census, `review_policy`, routing-key names and per-project
+   tools. Show it and confirm before writing:
 
    ```json
    {
      "build_test_cmd": "<the value resolved for BUILD_TEST_CMD>",
-     "canonical_lang": "<…>",
-     "stakeholder_lang": "<…>",
-     "stakeholder_lang_code": "<…>",
+     "language": "<the language name, e.g. English>",
+     "language_code": "<its BCP 47 code, e.g. en>",
      "main_integration_branch": "<the value resolved for MAIN_INTEGRATION_BRANCH>",
      "review_policy": "per-task",
      "census": {"enabled": false, "extractor": "none"}
@@ -236,6 +332,16 @@ template/example files that are ready to become the real thing.
    only if the project wants its architecture docs kept honest
    mechanically — and `dotnet-layered` as the extractor only for a .NET
    solution. Never put a per-machine or absolute path in this file.
+
+   For a **non-English** language, also (each after confirming):
+   - finish the record: re-run `apply` for every translated `replace`
+     file as the Setup language procedure says (post-resolution
+     `output_sha256`, placeholder map), and commit
+     `.claude/translation-record.json` with the rest;
+   - add `"language": "<the language name>"` to the new
+     `.claude/settings.json` (Claude Code's own setting: the assistant
+     then replies in that language). An English setup writes neither a
+     record nor a `language` setting.
 
 ## Domain 2 — Global plugins
 
@@ -385,7 +491,8 @@ separate from the actual code repo (the **target repo**), with *nothing*
 Claude-related ever committed inside the target repo. This domain runs
 from the AI-repo itself (this repo, already fully set up — nothing here
 gets copied or modified except this project's own `docs/<name>/`
-subtree, two small config files, and possibly a shared-ancestor
+subtree, two small config files, the AI-repo's own setup language in
+`.claude/project-config.json` (step 1a), and possibly a shared-ancestor
 `CLAUDE.md` note in step 10) and configures one target repo to consume
 it via local, never-committed links at the exact same relative
 locations Domains 1-4 would otherwise have copied files to. Re-run it
@@ -419,7 +526,7 @@ material at its root, each linked project one level down inside it.
     constitution.md            <- supreme, cross-project (framework ADR 0007/0015)
     workflow/                  <- shared
     glossary.md                <- shared
-    product/requirements-template.md, validation-summary-template.md
+    product/requirements-template.md
     <name>/                    <- one linked project
       CLAUDE.md
       project-config.json
@@ -443,8 +550,9 @@ This domain is mode B, chosen by the adoption-mode question above; mode
 C (Domain 6) is its user-level sibling, and mode A is Domains 1-4.
 Unlike Domains 1-4, this domain's target is **not** this repo's own
 root — it's a path the user supplies, anywhere on the same filesystem.
-It writes exactly two small config files (steps 7 and 8) with different
-lifecycles; see the note at the end of this domain for what each is for
+Besides the setup-wide language in the AI-repo's own config (step 1a), it
+writes exactly two small per-project config files (steps 7 and 8) with
+different lifecycles; see the note at the end of this domain for what each is for
 and why the three links themselves still need none.
 
 1. Prerequisite check: this domain links straight to *this* repo's own
@@ -458,6 +566,29 @@ and why the three links themselves still need none.
    the two templates into real files, not a fully-tailored Domain 1
    pass). Don't attempt a silent partial rename yourself — that's
    Domain 1's job, not this one's.
+
+   **1a. Setup language** — once per AI-repo, never per project. Read
+   `<ai-repo>/.claude/project-config.json` (or `describe`'s `language`):
+   - **It already has a language** → say which, do not ask, and go on:
+     every project linked here inherits it.
+   - **It has none** (first setup of this AI-repo) → ask with the
+     **Setup language** procedure above. Resolve the `{{LANGUAGE}}` the
+     prerequisite pass left in the shared files (show the files, confirm,
+     then replace it with the language name). For a non-English choice,
+     then translate: the AI-repo's files are already resolved, so run
+     `translation.py recover-placeholders --source <pristine snapshot>
+     --resolved <ai-repo> --record <record>` first (it asks about any
+     disagreement or non-match and fails on files edited for other
+     reasons: ask the user, never guess), substitute that map into each
+     staged translation before `apply --dest <ai-repo file>`, and commit
+     the translated files and `.claude/translation-record.json`. Write
+     `language`/`language_code` into
+     `<ai-repo>/.claude/project-config.json` (the AI-repo's setup-wide
+     config, committed; create it as `{"language": …, "language_code": …}`
+     if it does not exist, and preserve every other key). Step 9 adds
+     the `language` setting.
+   - It has only a legacy split (`describe` says `legacy_split: true`)
+     → offer "Migrating a legacy split setup" before asking.
 2. Ask for the target repo's path. Suggest candidates first: list this
    repo's own sibling directories that contain a `.git` folder and
    aren't this repo itself, offered alongside a free-text "other path"
@@ -485,9 +616,8 @@ and why the three links themselves still need none.
      Since the AI-repo is this repo, already bootstrapped by Domain 1
      (step 1 checked that), it normally does and already holds
      `constitution.md`, `workflow/`, `glossary.md` and
-     `product/requirements-template.md` +
-     `product/validation-summary-template.md`. This is created **once
-     per AI-repo, never per project** — if any of those five are
+     `product/requirements-template.md`. This is created **once
+     per AI-repo, never per project** — if any of those four are
      missing, say which and stop; that means Domain 1 hasn't finished
      here, and a target repo linked now would reach a half-empty shared
      root. Never re-seed or overwrite a shared file that already
@@ -525,7 +655,8 @@ and why the three links themselves still need none.
      - `docs/<name>/CLAUDE.md` — from `CLAUDE.md.template`, with this
        project's placeholders resolved using Domain 1 step 2's
        detect-then-confirm pattern run against the **target** repo, not
-       this one.
+       this one. Fill `{{LANGUAGE}}` from the AI-repo's language
+       (`describe`), never by asking.
      - **No `constitution.md` here.** The supreme
        `docs/constitution.md` at the shared root already binds this
        project; `docs/<name>/constitution.md` is purely additive and
@@ -624,20 +755,14 @@ and why the three links themselves still need none.
        → `dotnet test`; a `package.json` `test` script → `npm test`;
        both → chain them), show the detection for confirmation rather
        than silently trusting it; ask if neither is found.
-     - `canonical_lang` — ask, default suggestion English.
-     - `stakeholder_lang` / `stakeholder_lang_code` — ask, with "same
-       as canonical — skip the split" as an explicit option; if chosen,
-       set both to the canonical language and code (every step that
-       reads them already no-ops when they're equal).
+     - **No language here.** The language is the AI-repo's, asked once
+       in step 1a; a per-project config never carries it.
 
      Write them as a flat JSON object with exactly these keys:
 
      ```json
      {
        "build_test_cmd": "...",
-       "canonical_lang": "...",
-       "stakeholder_lang": "...",
-       "stakeholder_lang_code": "...",
        "main_integration_branch": "<detected from origin/HEAD>",
        "review_policy": "per-task",
        "census": {"enabled": false, "extractor": "none"}
@@ -657,8 +782,7 @@ and why the three links themselves still need none.
      changes nothing here. **Never overwrite an already-answered
      `project-config.json` without that explicit confirmation:** it's
      committed and shared, so silently changing another developer's
-     build/test command or language split is a real regression, not a
-     refresh.
+     build/test command is a real regression, not a refresh.
    - If it exists but doesn't parse, stop and report it; don't replace
      it with a guess.
 9. **The shared `<ai-repo>/.claude/settings.json`** — one file for
@@ -666,12 +790,16 @@ and why the three links themselves still need none.
    project.
    - **If it already exists**, leave it alone and say so. Linking a
      second target repo must not touch the settings every
-     already-linked project is running on.
+     already-linked project is running on. **The one exception:** when
+     step 1a just set a non-English language, show the one line
+     `"language": "<name>"` and, after confirming, add it (preserving
+     every other key; if the file doesn't parse, stop and report).
    - **If it doesn't exist**, create it from
      `.claude/settings.multi-project.json.example` — *not*
      `settings.example.json`, which bakes one project's build/test
-     command and language values into static text, impossible for a
-     file shared by several projects (framework ADR 0013). Resolve its three
+     command into static text, impossible for a
+     file shared by several projects (framework ADR 0013). Add the same
+     `language` line when step 1a chose a non-English language. Resolve its three
      placeholders:
      - `{{HOOKS_DIR}}` → `${CLAUDE_PROJECT_DIR:-.}/.claude/hooks`, which
        is correct here precisely because the target repo's `.claude` is
@@ -769,8 +897,10 @@ track something already derivable from the filesystem.
 
 What is *not* derivable is which project a **shared** `.claude/`
 belongs to for the current session, and that project's build/test
-command and language split — one `settings.json` serves every linked
-project, so neither can be baked into it. framework ADR 0013 answers both with
+command — one `settings.json` serves every linked
+project, so neither can be baked into it. (The language is setup-wide,
+not per project, so it lives in the AI-repo's own
+`.claude/project-config.json`.) framework ADR 0013 answers both with
 the two files above, split by lifecycle: step 7's
 `.claude/projects.local.json` is per-machine routing (gitignored,
 absolute paths, regenerated by this domain on each machine), and step
@@ -793,7 +923,11 @@ was skipped due to a real collision. State the routing entry written
 left as-is, and whether the shared `.claude/settings.json` was created
 from the multi-project variant or already existed. State whether the
 shared-ancestor `CLAUDE.md` was created, appended to, or already
-covered this target repo, and its resolved path. State plainly that
+covered this target repo, and its resolved path. State the setup
+language (asked now, or inherited from the AI-repo), whether a
+translation pass ran (files translated, files left in English and why,
+the token estimate shown) and whether the shared settings gained
+`language`. State plainly that
 the `docs` link points at the **shared root**, so this project's own
 content is reached at `docs/<name>/` by resolved absolute path (the
 `project-registration` skill does this rebinding for every pipeline
@@ -881,14 +1015,33 @@ project declares in its own config.
      suggested dedicated folder, or another path). On an upgrade, offer
      the `worktrees_root` already in `framework.json` as the default.
      Domain 7's step 6 offer (root `CLAUDE.md` note) applies here too.
+   - **Language** — the **Setup language** question above, English
+     first. On an upgrade, offer the `language` already in
+     `framework.json` as the default ("keep"). It covers every project
+     registered under this install; registering one never asks again.
    - **Anything to retire** — only if the dry run shows a collision
      with something the user wants out of the way. `--retire <path>`
      moves it into `~/.claude/<prefix>/backups/retired/`; the
      uninstaller lists it and can restore it.
-3. **Dry run** and show the result:
-   `python .claude/scripts/install_user_level.py --prefix <p> --projects-root "<root>" [--worktrees-root "<folder>"]`
-   (leave the flag out to keep the current value; `--worktrees-root ""`
-   goes back to sibling worktrees).
+3. **Translate first, then dry run.** For a non-English language, fill
+   the translation cache **before** the dry run: run the **Setup
+   language** procedure's mode C steps from *this* repository checkout
+   (plan, estimate and confirmation, term map, `translator` batches,
+   `check`, `apply` with no `--dest`, so the cache lands in
+   `<namespace>/translations/` with `record.json`). The installer reads
+   that cache and **aborts on a stale or missing entry**, so a
+   language that changed or a newer checkout means re-running `plan`
+   and translating what it lists. English fills no cache.
+
+   Then **dry run** and show the result:
+   `python .claude/scripts/install_user_level.py --prefix <p> --projects-root "<root>" [--worktrees-root "<folder>"] [--language <name> --language-code <code>]`
+   (leave a flag out to keep the current value; `--worktrees-root ""`
+   goes back to sibling worktrees; the two language flags go together
+   and are kept across upgrades). Non-English also merges Claude Code's
+   `language` setting into `settings.json`. If the dry run shows a
+   *different* `language` already there, it is left alone: tell the
+   user and, only if they want it replaced, add `--set-language-setting`
+   (uninstall restores the old value).
    It lists every file it would create, update or keep, the
    `settings.json` additions, and any legacy pre-namespace install it
    found. A collision or a hand-edited installed file makes it refuse.
@@ -916,14 +1069,18 @@ project declares in its own config.
      byte for byte).
    - The projects root, and whether it carries the default's backup risk.
    - The worktrees root, or that spec worktrees sit beside their repo.
+   - The setup language and code; for a non-English one, how many files
+     were translated and which stayed English (and why), the token
+     estimate shown, and that `settings.json` gained (or kept, or
+     replaced with `--set-language-setting`) the `language` setting.
    - That **no code repo was touched** — and that hooks do nothing in a
      repo until it's registered.
    - **Loudest:** unless step 5 ran, no project is registered and none
      needs to be — the first `/<prefix>-spec`, `/<prefix>-plan`,
      `/<prefix>-quick`, ... in an unregistered repo registers it on the
      spot.
-   - How to upgrade (re-run this domain from an updated checkout) and how
-     to uninstall:
+   - How to upgrade (re-run this domain from an updated checkout; see
+     "Upgrading and migrating") and how to uninstall:
      `python ~/.claude/<prefix>/scripts/uninstall.py` (then `--apply`).
 
 **Upgrading from the hand-built install of 2026-09-30.** That copy has
@@ -1037,6 +1194,92 @@ domain existed. Re-run it any time to move future worktrees. Existing
 worktrees stay where they are (`git worktree move` relocates one by
 hand).
 
+## Upgrading and migrating (any mode)
+
+Goal: bring a non-English setup up to a newer framework version
+translating **only what changed upstream** (framework spec 0005 FR-06,
+NFR-06), and move a legacy split setup to one language. Every write is
+confirmed first (`AskUserQuestion`), as everywhere in this command. An
+English setup has no record: an upgrade translates nothing, and
+`upgrade-plan` reports a no-op. The translation steps are the **Setup
+language** procedure's; this section only says what to run and when.
+
+**Mode A upgrade.** There is no installer: the user points this run at a
+newer checkout of the framework.
+
+1. `python translation.py upgrade-plan --mode a --source <newer checkout>
+   --record .claude/translation-record.json --language-code <code>`.
+   Ignore listed paths outside `.claude/`, `docs/` and
+   `CLAUDE.md.template` (the checkout's README, `evolution/`, ...).
+2. `retranslate` (source changed, output still untouched): state the
+   estimate, confirm, then translate from the newer English, check,
+   re-resolve placeholders from the record's `placeholders` map (ask
+   about any NAME the map lacks, as Domain 1 step 2 does), `apply`
+   with `--dest`, overwriting the old translation.
+3. `edited` (source changed, output edited locally): show each file's
+   local diff against the recorded version and **ask per file**:
+   overwrite with a fresh translation, or keep the local file.
+4. `keep` files (constitution, glossary): **never touched**. `new`:
+   translated like a first setup (renamed as Domain 1 step 5 does).
+   `deleted_upstream`: reported only, never deleted.
+5. Non-translatable files (JSON, scripts, `*.example`) follow the
+   usual hand copy; a changed `settings.example.json` is shown, never
+   overwritten over a customised `settings.json`.
+
+**Mode B upgrade.** The AI-repo is a git clone of the framework, so this
+runs inside an open merge. Needs a clean tree and a known upstream remote.
+
+1. `git fetch <upstream>` then `git merge --no-commit <upstream>/<branch>`
+   (conflicts are expected; the merge stays open).
+2. `python translation.py upgrade-plan --mode b --repo <ai-repo> --record
+   .claude/translation-record.json`. If the record has no `placeholders`
+   map (an AI-repo set up before the record existed), run
+   `recover-placeholders` first, with the pristine sources of the
+   merge base (`git archive $(git merge-base HEAD MERGE_HEAD)`), and ask
+   about any disagreement or non-match.
+3. For **every `changed` path the report lists, and only those**, whether
+   it conflicted or merged cleanly (the hash decides, not git):
+   `python translation.py take-upstream --repo <ai-repo> --path <p> ...`
+   passing exactly the listed paths; never any other path, never a
+   blanket checkout. Unchanged paths keep the AI-repo's version.
+4. Translate those English files (and the `new` ones; snapshot
+   `git archive MERGE_HEAD` as `--source`), `check` each, substitute the
+   placeholder map into each staged file, then `apply --dest`. A file
+   that fails keeps upstream's English (with the map applied, recorded
+   `apply --status english --reason`), so the merge always completes.
+   `deleted_upstream` is reported, never deleted.
+5. Resolve any remaining conflicts by hand with the user, show the
+   result, confirm, and **commit the merge** (the translated files and
+   `.claude/translation-record.json` go in it).
+
+**Mode C upgrade.** Re-run Domain 6 from the updated checkout. Its step
+3 refills the cache first: the installer aborts on stale cache entries,
+so translate exactly what `plan` lists (changed and new sources only)
+before the dry run.
+
+**Changing the language later.** Run the **Setup language** procedure
+with the new language: `plan` then lists every `replace` file and the
+translation starts from English, never from the previous translation.
+Existing project artifacts (specs, ADRs, architecture docs) are never
+rewritten silently; offer translating them, file by file, and only on a
+yes (framework spec 0005 FR-10).
+
+**Migrating a legacy split setup.** When `python
+"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_project_paths.py" describe`
+reports `legacy_split: true` (`canonical_lang`/`stakeholder_lang` and no
+setup language), offer to migrate, never force it:
+
+1. Ask the setup language with the **Setup language** procedure
+   (suggest the old canonical language as the default).
+2. Record it where the mode keeps it (mode A `.claude/project-config.json`,
+   mode B the AI-repo's, mode C `framework.json` through Domain 6's
+   `--language`), run the translation steps if non-English, and after
+   confirming drop the old `canonical_lang`/`stakeholder_lang*` keys.
+3. **Keep every `.validation-*.md` file; never delete one.** A settings
+   file still wiring `validation_sync_check.py` is harmless (the hook is
+   a legacy shim); offer to unwire it.
+4. Translating existing project artifacts is **offered, never forced**.
+
 <!--
 ## Domain N — <name>
 
@@ -1054,7 +1297,10 @@ proliferation this command exists to avoid.
 ## Close
 
 Name the adoption mode chosen (A, B or C) first — it's what explains
-which domains ran and which were never applicable. Then end with a
+which domains ran and which were never applicable. Then state the setup
+language and code and whether a translation pass ran (files translated,
+files left in English and why, the token estimate shown, the `language`
+setting written), or that English needed none. Then end with a
 one-line summary per domain covered: what got filled in/installed/
 merged, what was declined, what was already covered, and — loudest of
 all — the state of the two architecture files:
@@ -1095,7 +1341,8 @@ all — the state of the two architecture files:
 - If Domain 6 ran: the prefix and namespace installed into, what the
   installer created/updated/kept (and any collision it refused on), what
   `settings.json` gained, the chosen projects root and whether it carries
-  the default's backup risk, the worktrees root (or none), whether bulk registration or a migration
-  ran — and, loudest, that unless they did, **no project was
+  the default's backup risk, the worktrees root (or none), the language
+  and cache state (translated/English files, `language` setting), whether
+  bulk registration or a migration ran — and, loudest, that unless they did, **no project was
   registered and none needs to be**: the first `/<prefix>-*` pipeline
   command run in an unregistered repo registers it on the spot.

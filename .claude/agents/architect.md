@@ -27,6 +27,7 @@ When deciding:
 - If the change requires a new architecture decision, draft an ADR at
   `docs/decisions/000N-short-name.md`, following the format in the
   `adr-writing` skill, with `status: proposed`.
+- Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
 - Never mark the ADR as accepted — that's a human decision. End by
   clearly stating that the draft awaits approval before `coder`
   proceeds.

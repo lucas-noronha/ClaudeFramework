@@ -41,7 +41,7 @@ docs/
   glossary.md.template
   architecture/    → overview template + 2 blank slots (module-structure, frontend) — no default architecture pattern shipped; fill in your project's actual shape or delete what doesn't apply
   decisions/       → only the ADR template (0000-adr-template.md) — a project's own ADRs start at 0001 here
-  product/         → spec intake template (a spec auto-tags its own area/lineage and carries a "## Reconciliation" section — ADR 0008/0009) + stakeholder-facing validation-summary template
+  product/         → spec intake template (a spec auto-tags its own area/lineage and carries a "## Reconciliation" section — ADR 0008/0009) (no companion validation template: the split is retired, ADR 0023)
   workflow/        → living-architecture-docs.md (how architecture docs stay true to code), the conceptual flow, the practical "what do I type" guide, parallel-work guidance, the model-tiering convention, the Core-vs-Optional plugin catalog, and how the constitution/lineage/reconciliation/metrics layer fits together
 evolution/         → the framework's OWN specs and ADRs (its development history) — never copied into a project; see evolution/README.md for the boundary
 tests/             → the framework's own tests (not shipped into projects): every acceptance criterion of specs 0001–0003, run with `python -m unittest` from `tests/`
@@ -60,11 +60,10 @@ an unfilled placeholder should treat it as a sign the doc hasn't been
 set up yet, not as a real value. Common ones:
 
 - `{{PROJECT_NAME}}` — your project's name
-- `{{CANONICAL_LANG}}` — the language specs/ADRs/architecture docs are
-  written in (usually English, so agents reload them cheaply)
-- `{{STAKEHOLDER_LANG}}` — the language the non-technical
-  stakeholder(s) who validate specs actually read (can be the same as
-  canonical — the split only exists if it buys you something)
+- `{{LANGUAGE}}` — the one setup language, asked once by
+  `/setup-framework` (English by default, which costs nothing; any other
+  language is translated by the model at setup and, on upgrade, only for
+  changed files). Machine-parsed markers stay English (ADR 0023)
 - `{{BACKEND_DIR}}` / `{{FRONTEND_DIR}}` — your repo's top-level roots,
   if it's a monorepo (drop the split entirely if it isn't)
 - `{{BUILD_TEST_CMD}}` — the command your deterministic gate hook runs
@@ -403,14 +402,14 @@ everything else was:
   branch-name convention) instead of a new file to maintain and let go
   stale. Deliberately not a new stateful tracking file — that would
   duplicate what git already knows.
-- **Configurable stakeholder language** — the original hardcoded
-  Portuguese as the stakeholder-facing language (correct for that
-  project's actual business partner). Here it's `{{STAKEHOLDER_LANG}}`
-  throughout, with no language baked in anywhere — including in the
-  hooks (a leftover hardcoded `.validation-pt.md` check in
-  `session_brief.py` was found and removed; the generic
-  `.validation-` substring check already covered it). Portuguese stays
-  the default only in RHGest itself, not in this template.
+- **One setup language** — the original hardcoded Portuguese as the
+  stakeholder-facing language, later split into canonical and
+  stakeholder languages. That split is retired (spec 0005, ADR 0023):
+  `/setup-framework` asks for one language, once. English copies as-is;
+  another language is translated by the model at setup and on upgrade
+  for changed files only. Frontmatter keys and enumerated values,
+  `## Tasks`/`## Reconciliation` and `Approved`/`Returned` stay English,
+  so hooks work in any language. No language is baked into the hooks.
 - **`docs/decisions/README.md` and `docs/product/specs/README.md`, kept
   in sync automatically** — as ADRs and specs accumulate, finding the
   right one to open stopped being cheap. Two new hooks

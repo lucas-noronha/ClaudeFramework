@@ -1,4 +1,11 @@
-"""PostToolUse (Edit/Write): decide, at zero token cost, whether a spec's
+"""LEGACY SHIM, unwired from every settings template (framework ADR 0023 item 6,
+framework spec 0005 FR-03/NFR-05). The canonical/stakeholder split is
+retired; this file stays only so a settings file that still wires it never
+hits a missing-script error, and so a project that still has split keys
+and no setup language keeps its old behaviour. In every other case it is
+a silent no-op. It never deletes any `.validation-*.md` file.
+
+Original purpose: PostToolUse (Edit/Write): decide, at zero token cost, whether a spec's
 stakeholder-language validation summary needs re-syncing — and only then
 hand the sync to the session (framework ADR 0020, framework spec 0003 FR-03; framework spec 0001
 D10/D11).
@@ -38,12 +45,15 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _project_paths import (  # noqa: E402
+    framework_config,
+    framework_home,
+    has_actual_split,
     hook_should_run,
     load_project_config,
     normalize,
     read_hook_input,
     resolve_docs_root,
-    resolve_shared_docs_root,
+    read_project_config,
 )
 
 SYNC_STATUSES = {"approved", "implemented"}
@@ -53,6 +63,15 @@ HASHED_SECTIONS = (
     "Non-functional requirements",
     "Explicitly out of scope",
 )
+
+
+def setup_has_language() -> bool:
+    """True when the setup itself names a language (framework.json, or
+    the setup's own project-config.json): the split is retired there."""
+    if str(framework_config().get("language") or "").strip():
+        return True
+    own = read_project_config(framework_home())
+    return bool(str(own.get("language") or "").strip())
 
 
 def frontmatter_field(content: str, key: str):
@@ -84,6 +103,9 @@ def main() -> None:
     if not path:
         return
 
+    if setup_has_language():
+        return  # the setup has a language: the split is retired
+
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
     specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
     base = os.path.basename(abspath)
@@ -96,7 +118,7 @@ def main() -> None:
     canonical = str(config.get("canonical_lang") or "").strip()
     stakeholder = str(config.get("stakeholder_lang") or "").strip()
     code = str(config.get("stakeholder_lang_code") or "").strip()
-    if not canonical or not stakeholder or not code or canonical.lower() == stakeholder.lower():
+    if not has_actual_split(config) or not code:
         return
 
     try:
@@ -116,12 +138,10 @@ def main() -> None:
     except OSError:
         pass  # no companion yet — it needs creating
 
-    shared = resolve_shared_docs_root(project)
-    template = normalize(os.path.join(shared, "product", "validation-summary-template.md")) if shared else "the validation-summary template"
     instruction = (
         f"Validation summary sync needed: {normalize(abspath)} is approved and its requirements changed "
         f"since the {stakeholder} companion was last synced. Rewrite {normalize(companion)} in plain "
-        f"{stakeholder} for a non-technical reader, following {template}, from the canonical spec's "
+        f"{stakeholder} for a non-technical reader, from the canonical spec's "
         f"CURRENT business context, functional and non-functional requirements and out-of-scope list "
         f"(canonical language: {canonical}). Reference the canonical file by name. Preserve any existing "
         f"validation checkbox states; add the template's default questions only when creating the file. "

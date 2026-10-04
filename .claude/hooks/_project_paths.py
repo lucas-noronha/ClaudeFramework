@@ -685,6 +685,89 @@ def state_file_path(project_dir: str, filename: str, scope=None) -> str:
     return os.path.join(root, filename)
 
 
+def _language_entry(name, code, source):
+    """`{name, code, source}`. English (by name, `en` or `en-*`) is always
+    `English`/`en` when no code was given; any other missing code is None.
+    """
+    lowered = name.lower()
+    if lowered == "english" or lowered == "en" or lowered.startswith("en-"):
+        name = "English"
+        code = code or "en"
+    return {"name": name, "code": code or None, "source": source}
+
+
+def _configured_language(config: dict, source: str):
+    name = config.get("language")
+    if not isinstance(name, str) or not name.strip():
+        return None
+    code = config.get("language_code")
+    return _language_entry(name.strip(), code.strip() if isinstance(code, str) else "", source)
+
+
+def setup_language(project_dir=None) -> dict:
+    """The setup language as `{name, code, source}` (framework ADR 0023
+    section 1). Checked in order: `framework.json` (`source`
+    `framework.json`), `<framework_home>/project-config.json`
+    (`project-config`), the project's legacy `canonical_lang` (`legacy`),
+    then English (`default`). `code` is BCP 47, or None when only a
+    legacy name is known. Never raises.
+    """
+    found = _configured_language(framework_config(), "framework.json")
+    if found is None:
+        found = _configured_language(read_project_config(framework_home()), "project-config")
+    if found is not None:
+        return found
+    legacy = load_project_config(project_dir or os.environ.get("CLAUDE_PROJECT_DIR") or "").get("canonical_lang")
+    if isinstance(legacy, str) and legacy.strip():
+        return _language_entry(legacy.strip(), "", "legacy")
+    return _language_entry("English", "en", "default")
+
+
+DEFAULT_ROUTING_KEYS = {"summary": "summary", "notFor": "notFor"}
+ROUTING_KEY_ALIASES = {"summary": ("resumo",), "notFor": ("naoResponde",)}
+_ROUTING_OVERRIDE_NAMES = {"summary": "summary", "notFor": "not_for"}
+
+
+def routing_keys(project: str) -> dict:
+    """Each routing role's `{key, aliases}` (framework ADR 0019, 0020; ADR 0023
+    section 9). Defaults: `summary` (alias `resumo`) and `notFor` (alias
+    `naoResponde`). A project's `routing_keys` override (`summary`, `not_for`)
+    replaces the primary `key`; the aliases stay readable, so a doc written
+    before the rename keeps working. Readers take the primary when a doc has
+    both names. Nudges name the primary.
+    """
+    configured = load_project_config(project).get("routing_keys")
+    keys = {}
+    for role, default in DEFAULT_ROUTING_KEYS.items():
+        key = default
+        if isinstance(configured, dict):
+            value = configured.get(_ROUTING_OVERRIDE_NAMES[role])
+            if isinstance(value, str) and value:
+                key = value
+        keys[role] = {"key": key, "aliases": [a for a in ROUTING_KEY_ALIASES[role] if a != key]}
+    return keys
+
+
+def has_actual_split(config: dict) -> bool:
+    """True when a project config names a stakeholder language that differs
+    from its `canonical_lang` (case-insensitive) — the retired split.
+    """
+    canonical = str(config.get("canonical_lang") or "").strip()
+    stakeholder = str(config.get("stakeholder_lang") or "").strip()
+    return bool(canonical and stakeholder and canonical.lower() != stakeholder.lower())
+
+
+def legacy_split(project_dir: str, language=None) -> bool:
+    """True when the project's config still has the retired stakeholder
+    split keys and no setup language is configured (framework ADR 0023
+    section 6): the one case setup offers a migration.
+    """
+    language = language or setup_language(project_dir)
+    if language["source"] in ("framework.json", "project-config"):
+        return False
+    return has_actual_split(load_project_config(project_dir))
+
+
 def describe(project_dir: str) -> dict:
     """Everything a pipeline command needs to rebind its paths, resolved
     the same way the hooks resolve it. Printed by `python
@@ -717,6 +800,7 @@ def describe(project_dir: str) -> dict:
                 template = normalize(candidate)
                 break
 
+    language = setup_language(project_dir)
     return {
         "mode": mode,
         "project_dir": normalize(project_dir),
@@ -735,6 +819,8 @@ def describe(project_dir: str) -> dict:
         "main_integration_branch": main_integration_branch(project_dir) if subtree is not None or mode == "A" else None,
         "worktrees_root": get_worktrees_root(project_dir),
         "worktree": linked_worktree(project_dir),
+        "language": language,
+        "legacy_split": legacy_split(project_dir, language),
     }
 
 

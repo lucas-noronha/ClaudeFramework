@@ -27,6 +27,8 @@ superseded_by: null | 000Y
 ## References
 ```
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 Rules:
 - Sequential numbering, never reuse a removed ADR's number.
 - An ADR is never edited after `accepted` — a changed decision becomes

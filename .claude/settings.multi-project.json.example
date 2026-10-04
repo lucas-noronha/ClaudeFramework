@@ -118,10 +118,6 @@
           {
             "type": "command",
             "command": "{{PYTHON}} \"{{HOOKS_DIR}}/pipeline_metrics.py\""
-          },
-          {
-            "type": "command",
-            "command": "{{PYTHON}} \"{{HOOKS_DIR}}/validation_sync_check.py\""
           }
         ]
       },

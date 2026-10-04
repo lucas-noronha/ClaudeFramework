@@ -1,5 +1,5 @@
 ---
-description: Creates a feature spec from the requirements template, producing a canonical file plus a stakeholder-language validation summary (if that split applies to this project).
+description: Creates a feature spec from the requirements template, producing the spec file.
 argument-hint: short description of the feature
 ---
 
@@ -32,8 +32,10 @@ From the description in $ARGUMENTS:
    downstream trusts.
 3. Fill in the business context and functional/non-functional
    requirements that are already clear from the description, **in
-   {{CANONICAL_LANG}}** — this is the canonical file agents will
-   reload repeatedly. Also check the constitution, if present — if the
+   {{LANGUAGE}}** — this is the file agents will reload repeatedly.
+   Frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`
+   and the reconciliation outcome phrases stay English.
+   Also check the constitution, if present — if the
    requirement as described would need to violate a principle there,
    flag that explicitly as one of the "unclear, ask" items below rather
    than formalizing it silently. **There can be two of them, and you
@@ -78,21 +80,11 @@ From the description in $ARGUMENTS:
    own divider, for the exact shape. Include an empty "## Reconciliation"
    section per the template; `reviewer` populates it during
    `/implement` — never fill it in here.
-7. If the project has a `{{STAKEHOLDER_LANG}}` split configured (see
-   `CLAUDE.md`'s language convention), generate a second, short file at
-   `docs/product/specs/NNNN-short-name.validation-{{STAKEHOLDER_LANG_CODE}}.md`
-   — a plain restatement of the functional/non-functional requirements
-   in `{{STAKEHOLDER_LANG}}`, written for a non-technical reader. This
-   is the only artifact the stakeholder needs to read; it references
-   the canonical file, it doesn't duplicate its full structure. Skip
-   this step entirely if canonical and stakeholder language are the
-   same.
-8. Do not implement anything at this stage. Do not invoke `coder`.
+7. Do not implement anything at this stage. Do not invoke `coder`.
 
-End by reminding the user that the next step is validating the
-`.validation-{{STAKEHOLDER_LANG_CODE}}.md` file (or the canonical file
-directly, if no split applies) with the stakeholder outside the chat,
-and then running `/plan`: it asks whether to approve the spec and flips
+End by reminding the user that the next step is validating the spec
+with the stakeholder outside the chat, and then running `/plan`: it
+asks whether to approve the spec and flips
 `status` to `approved` itself, so there is nothing to edit by hand. If
 the feature gets dropped instead, `/plan` offers that too, or `status`
 becomes `abandoned` by hand at any point; see the frontmatter note in

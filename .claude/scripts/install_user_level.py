@@ -29,6 +29,14 @@ What it does (framework spec 0001 FR-01..FR-10, NFR-03):
 - **Worktrees root** (`--worktrees-root`, optional): the per-machine
   folder `/worktree` creates spec worktrees under, recorded in
   `framework.json` and kept across upgrades until changed (`""` clears it).
+- **Language** (`--language NAME --language-code CODE`, optional; framework
+  spec 0005, ADR 0023): recorded in `framework.json` and kept across
+  upgrades. With a non-English language each translatable source is read
+  from the cache `<namespace>/translations/<path>` (index:
+  `translations/record.json`, built by `scripts/translation.py`) instead of
+  the English source, then rewritten and hashed as usual. A translatable
+  source with no fresh cache entry aborts the run before any write.
+  English (no flag, `en`, `en-*`) reads no cache.
 - **Absolute hook paths** (FR-04), and permissions generated against the
   absolute projects root (FR-08).
 - **No per-project placeholder survives** (FR-06, AC-04): per-project
@@ -67,18 +75,20 @@ SRC_DOCS = os.path.join(REPO, "docs")
 sys.path.insert(0, os.path.join(SRC_CLAUDE, "hooks"))
 import skill_index  # noqa: E402
 
+sys.path.insert(0, SCRIPTS_DIR)
+import translation  # noqa: E402
+
 MANIFEST_VERSION = 1
 # Run from the framework checkout; installing them would only confuse.
 EXCLUDED_COMMANDS = {"setup-framework"}
 EXCLUDED_SCRIPTS = {"install_user_level.py"}
+EXCLUDED_AGENTS = {"translator"}  # setup-time only; never installed (ADR 0023)
 RESERVED_PREFIXES = {"", "docs", "hooks", "scripts", "agents", "commands", "skills"}
 
 # Per-project placeholders → the runtime tokens the installed
 # `project-registration` skill defines (framework spec 0001 FR-06).
 RUNTIME_TOKENS = {
-    "CANONICAL_LANG": "<canonical_lang>",
-    "STAKEHOLDER_LANG": "<stakeholder_lang>",
-    "STAKEHOLDER_LANG_CODE": "<stakeholder_lang_code>",
+    "LANGUAGE": "<language>",
     "BUILD_TEST_CMD": "<build_test_cmd>",
     "MAIN_INTEGRATION_BRANCH": "<main_integration_branch>",
     "PROJECT_NAME": "<project name>",
@@ -138,7 +148,7 @@ def stems(folder: str, suffix: str):
 
 
 def inventory():
-    agents = stems(os.path.join(SRC_CLAUDE, "agents"), ".md")
+    agents = [a for a in stems(os.path.join(SRC_CLAUDE, "agents"), ".md") if a not in EXCLUDED_AGENTS]
     commands = [c for c in stems(os.path.join(SRC_CLAUDE, "commands"), ".md") if c not in EXCLUDED_COMMANDS]
     skills_root = os.path.join(SRC_CLAUDE, "skills")
     skills = sorted(d for d in os.listdir(skills_root) if os.path.isfile(os.path.join(skills_root, d, "SKILL.md")))
@@ -182,7 +192,7 @@ class Rewriter:
         #    project ADRs) is left for the registration skill to rebind.
         adr_names = "|".join(map(re.escape, self.adrs))
         shared = (r"workflow/[\w.-]+\.md|workflow/|glossary\.md|constitution-baseline\.md|constitution\.md|"
-                  r"product/requirements-template\.md|product/validation-summary-template\.md|"
+                  r"product/requirements-template\.md|"
                   rf"architecture/[\w-]+\.md\.template|decisions/(?:{adr_names})")
         text = re.sub(rf"(?<![\w/.-])(?:\.\./)*docs/({shared})", lambda m: f"{self.shared}/{m.group(1)}", text)
         return text
@@ -234,20 +244,48 @@ def insert_after_frontmatter(text: str, block: str) -> str:
 
 class Plan:
     def __init__(self):
-        self.files = {}  # dest(posix) -> {"data": bytes, "policy": str, "kind": str, "source": str}
+        # dest(posix) -> {"data": bytes, "policy": str, "kind": str, "source": str,
+        #                 "source_sha256": str|None, "translation": translated|english|none}
+        self.files = {}
+        self.missing = []  # translatable sources with no fresh cache entry (FR-06)
 
-    def add(self, dest, data, policy, kind, source):
+    def add(self, dest, data, policy, kind, source, source_sha256=None, translated="none"):
         if isinstance(data, str):
             data = data.encode("utf-8")
-        self.files[posix(dest)] = {"data": data, "policy": policy, "kind": kind, "source": source}
+        self.files[posix(dest)] = {"data": data, "policy": policy, "kind": kind, "source": source,
+                                   "source_sha256": source_sha256, "translation": translated}
 
 
 def build_plan(args, cfg, rw, agents, commands, skills, adrs, today):
     plan = Plan()
     ns, conf = cfg["namespace_dir"], cfg["config_dir"]
+    cache = f"{ns}/translations"
+    translating = not translation.is_english(cfg.get("language_code"))
+    record = translation.load_record(f"{cache}/record.json") if translating else {"files": {}}
+    stale_language = translating and record.get("language_code") != cfg.get("language_code")
+
+    def chosen_text(src_rel, dest, policy):
+        """(text, source_sha256, translation) — the cached translation when fresh, else the source."""
+        source = os.path.join(REPO, src_rel)
+        text = read_text(source)
+        sha = translation.file_sha256(source)
+        if not translating or not translation.is_translatable(src_rel):
+            return text, sha, "none"
+        entry = record["files"].get(src_rel)
+        if entry and entry.get("source_sha256") == sha and not stale_language:
+            if entry.get("status") == "english":
+                return text, sha, "english"
+            cached = os.path.join(cache, src_rel)
+            if entry.get("status") in ("translated", "existing") and os.path.isfile(cached):
+                with open(cached, encoding="utf-8-sig") as f:
+                    return f.read(), sha, "translated"
+        if policy == "keep" and os.path.isfile(dest):
+            return text, sha, "english"  # never rewritten, so nothing to translate
+        plan.missing.append(src_rel)
+        return text, sha, "none"
 
     def text_file(src_rel, dest, kind, policy="replace", rewrite=True, tokens=True, transform=None):
-        text = read_text(os.path.join(REPO, src_rel))
+        text, source_hash, translated = chosen_text(src_rel, posix(dest), policy)
         text = rw.frontmatter(text, kind)
         if rewrite:
             text = rw.references(text)
@@ -255,7 +293,7 @@ def build_plan(args, cfg, rw, agents, commands, skills, adrs, today):
             text = rw.runtime_tokens(text)
         if transform:
             text = transform(text)
-        plan.add(dest, text, policy, kind, src_rel)
+        plan.add(dest, text, policy, kind, src_rel, source_hash, translated)
 
     for a in agents:
         text_file(f".claude/agents/{a}.md", f"{conf}/agents/{args.prefix}-{a}.md", "agent")
@@ -273,12 +311,14 @@ def build_plan(args, cfg, rw, agents, commands, skills, adrs, today):
                     text_file(rel, dest, "skill", transform=transform)
                 else:
                     with open(os.path.join(dirpath, name), "rb") as f:
-                        plan.add(dest, f.read(), "replace", "skill", rel)
+                        data = f.read()
+                    plan.add(dest, data, "replace", "skill", rel, sha256(data))
 
     for name in sorted(os.listdir(os.path.join(SRC_CLAUDE, "hooks"))):
         if name.endswith(".py"):
             with open(os.path.join(SRC_CLAUDE, "hooks", name), "rb") as f:
-                plan.add(f"{ns}/hooks/{name}", f.read(), "replace", "hook", f".claude/hooks/{name}")
+                data = f.read()
+            plan.add(f"{ns}/hooks/{name}", data, "replace", "hook", f".claude/hooks/{name}", sha256(data))
     for dirpath, dirnames, filenames in os.walk(SCRIPTS_DIR):
         dirnames[:] = [d for d in dirnames if d != "__pycache__"]
         for name in sorted(filenames):
@@ -286,7 +326,8 @@ def build_plan(args, cfg, rw, agents, commands, skills, adrs, today):
                 continue
             rel = posix(os.path.relpath(os.path.join(dirpath, name), SCRIPTS_DIR))
             with open(os.path.join(dirpath, name), "rb") as f:
-                plan.add(f"{ns}/scripts/{rel}", f.read(), "replace", "script", f".claude/scripts/{rel}")
+                data = f.read()
+            plan.add(f"{ns}/scripts/{rel}", data, "replace", "script", f".claude/scripts/{rel}", sha256(data))
 
     docs = f"{ns}/docs"
     text_file("docs/constitution-baseline.md", f"{docs}/constitution-baseline.md", "doc")
@@ -296,8 +337,7 @@ def build_plan(args, cfg, rw, agents, commands, skills, adrs, today):
     for name in sorted(os.listdir(os.path.join(SRC_DOCS, "workflow"))):
         if name.endswith(".md"):
             text_file(f"docs/workflow/{name}", f"{docs}/workflow/{name}", "doc")
-    for name in ("requirements-template.md", "validation-summary-template.md"):
-        text_file(f"docs/product/{name}", f"{docs}/product/{name}", "doc")
+    text_file("docs/product/requirements-template.md", f"{docs}/product/requirements-template.md", "doc")
     for name in sorted(os.listdir(os.path.join(SRC_DOCS, "architecture"))):
         if name.endswith(".md.template"):
             text_file(f"docs/architecture/{name}", f"{docs}/architecture/{name}", "template")
@@ -373,6 +413,16 @@ def unmerge(settings: dict, record: dict) -> list:
             allow.remove(rule)
         else:
             missing.append(f"permissions.allow {rule}")
+    # Scalar keys: removed only while they still hold the value we set; a
+    # value we overwrote (--set-language-setting) goes back to what it was.
+    previous = record.get("previous_scalars", {})
+    for key, value in record.get("added_scalars", {}).items():
+        if settings.get(key) != value:
+            missing.append(f"{key} (changed since install, left alone)")
+        elif key in previous:
+            settings[key] = previous[key]
+        else:
+            del settings[key]
     # Containers this install created, deepest first — only if now empty.
     for key in reversed(record.get("created_keys", [])):
         parts = key.split(".")
@@ -384,12 +434,27 @@ def unmerge(settings: dict, record: dict) -> list:
     return missing
 
 
-def merge(settings: dict, template: dict) -> dict:
+def merge(settings: dict, template: dict, scalars: dict = None, overwrite: bool = False) -> dict:
     """Append this install's hook groups and permissions, never touching
     an existing entry. A group whose every hook command already exists in
-    that event is skipped (idempotency).
+    that event is skipped (idempotency). `scalars` (Claude Code's `language`)
+    are set when absent and recorded; an equal value is not ours (not
+    recorded); a different one is reported in `kept_scalars` and left alone
+    unless `overwrite`, which records the value it replaced.
     """
-    record = {"added_groups": [], "added_permissions": [], "created_keys": []}
+    record = {"added_groups": [], "added_permissions": [], "created_keys": [],
+              "added_scalars": {}, "previous_scalars": {}, "kept_scalars": {}}
+    for key, value in (scalars or {}).items():
+        if key not in settings:
+            settings[key] = value
+            record["added_scalars"][key] = value
+        elif settings[key] != value:
+            if overwrite:
+                record["previous_scalars"][key] = settings[key]
+                settings[key] = value
+                record["added_scalars"][key] = value
+            else:
+                record["kept_scalars"][key] = settings[key]
 
     def ensure(container, key, default, path):
         if key not in container:
@@ -437,6 +502,9 @@ def main(argv=None) -> int:
     parser.add_argument("--config-dir", help="Claude Code user config dir (default: ~/.claude; required if CLAUDE_CONFIG_DIR is set)")
     parser.add_argument("--projects-root", help="where project subtrees are created (default: <namespace>/docs)")
     parser.add_argument("--worktrees-root", help="per-machine folder /worktree creates spec worktrees under (default: kept from the last install, else none = sibling of the repo; \"\" clears it)")
+    parser.add_argument("--language", help="project language name, e.g. Portuguese (default: kept from the last install, else English)")
+    parser.add_argument("--language-code", help="its BCP 47 code, e.g. pt-BR; en / en-* means English (needs --language)")
+    parser.add_argument("--set-language-setting", action="store_true", help="overwrite a different `language` already in settings.json (uninstall restores it); without it that value is left alone")
     parser.add_argument("--python", default=None, help="interpreter command used in hook commands (default: python, else python3)")
     parser.add_argument("--retire", action="append", default=[], help="move one of your own files/folders under the config dir aside (restorable by uninstall)")
     parser.add_argument("--today", help=argparse.SUPPRESS)
@@ -483,6 +551,12 @@ def main(argv=None) -> int:
         worktrees_root = old_cfg.get("worktrees_root")
     else:
         worktrees_root = posix(os.path.abspath(os.path.expanduser(args.worktrees_root))) if args.worktrees_root.strip() else None
+    language = args.language if args.language is not None else old_cfg.get("language")
+    language_code = args.language_code if args.language_code is not None else old_cfg.get("language_code")
+    language, language_code = (language or "").strip() or None, (language_code or "").strip() or None
+    if bool(language) != bool(language_code):
+        print("--language and --language-code go together (e.g. --language Portuguese --language-code pt-BR).", file=sys.stderr)
+        return 2
     cfg = {
         "install_mode": "user-level",
         "prefix": args.prefix,
@@ -502,10 +576,21 @@ def main(argv=None) -> int:
         "claude_md_template": f"{namespace}/CLAUDE.md.template",
         "python": args.python or old_cfg.get("python") or default_python(),
     }
+    if language:
+        cfg["language"], cfg["language_code"] = language, language_code
 
     agents, commands, skills, adrs = inventory()
     rw = Rewriter(args.prefix, agents, commands, skills, adrs, config_dir, namespace, cfg["shared_docs_root"], today)
     plan = build_plan(args, cfg, rw, agents, commands, skills, adrs, today)
+
+    # ---- every translatable source needs a fresh cache entry (ADR 0023 section 2, FR-06)
+    if plan.missing:
+        print("Install aborted — no fresh translation for these sources (nothing was written):", file=sys.stderr)
+        for rel in sorted(plan.missing):
+            print(f"  - {rel}", file=sys.stderr)
+        print(f"Run the setup's translation step for {cfg['language_code']} first "
+              f"(cache: {namespace}/translations/), then re-run.", file=sys.stderr)
+        return 1
 
     # ---- verification before anything is written (AC-04 + FR-01)
     problems = []
@@ -601,13 +686,24 @@ def main(argv=None) -> int:
     else:
         settings = {}
     original_settings = json.loads(json.dumps(settings))
+    # An earlier --set-language-setting overwrite sticks on upgrade only while the
+    # value is still the one it wrote; one the user changed since is left alone.
+    old_scalars = old_manifest.get("settings", {})
+    sticky = ("language" in old_scalars.get("previous_scalars", {})
+              and settings.get("language") == old_scalars.get("added_scalars", {}).get("language"))
     if old_manifest.get("settings"):
         lost = unmerge(settings, old_manifest["settings"])
         if lost:
             print("Note: some previously installed settings entries were already changed or removed by hand:")
             for item in lost:
                 print(f"  - {item}")
-    record = merge(settings, resolve_settings_template(cfg))
+    # Claude Code's `language` follows the install's language; English writes nothing.
+    scalars = {"language": language} if language and not translation.is_english(language_code) else {}
+    record = merge(settings, resolve_settings_template(cfg), scalars, args.set_language_setting or sticky)
+    kept_scalars = record.pop("kept_scalars")
+    for key in ("added_scalars", "previous_scalars"):
+        if not record[key]:
+            del record[key]  # manifests stay as before unless a scalar was set
     previous_keys = set(old_manifest.get("settings", {}).get("created_keys", []))
     record["created_keys"] = sorted(set(record["created_keys"]) | previous_keys, key=lambda k: (k.count("."), k))
     settings_changed = settings != original_settings
@@ -622,6 +718,8 @@ def main(argv=None) -> int:
         counts[action] = counts.get(action, 0) + 1
     print(f"{'Installing' if args.apply else 'Dry run'}: prefix `{args.prefix}` into {config_dir}")
     print(f"  namespace: {namespace}   projects root: {projects_root}")
+    if language:
+        print(f"  language: {language} ({language_code})")
     print(f"  worktrees root: {worktrees_root or '(none — each spec worktree sits beside its repo)'}")
     print("  files: " + ", ".join(f"{n} {a}" for a, n in sorted(counts.items())) + (f", {len(stale)} removed (dropped upstream)" if stale else ""))
     for action, dest in actions:
@@ -630,6 +728,11 @@ def main(argv=None) -> int:
     for dest in stale:
         print(f"    {'remove':9} {dest}")
     print(f"  settings.json: {'+' + str(len(record['added_groups'])) + ' hook group(s), +' + str(len(record['added_permissions'])) + ' permission(s)' if settings_changed else 'no change'}")
+    for key in record.get("added_scalars", {}):
+        replaced = record.get("previous_scalars", {}).get(key)
+        print(f"  settings.json: {key} = {record['added_scalars'][key]!r}" + (f" (replaces {replaced!r}; uninstall restores it)" if replaced is not None else ""))
+    for key, value in kept_scalars.items():
+        print(f"  settings.json: {key} is {value!r}, left alone (--set-language-setting overwrites it)")
     for r in retire:
         print(f"  retire: {r['original']} -> {r['backup']}")
     if legacy:
@@ -670,7 +773,8 @@ def main(argv=None) -> int:
         makedirs(posix(os.path.dirname(dest)))
         with open(dest, "wb") as f:
             f.write(item["data"])
-        files_record[dest] = {"sha256": sha256(item["data"]), "policy": item["policy"], "kind": item["kind"]}
+        files_record[dest] = {"sha256": sha256(item["data"]), "policy": item["policy"], "kind": item["kind"],
+                              "source_sha256": item["source_sha256"], "translation": item["translation"]}
     for dest in stale:
         os.remove(dest)
 

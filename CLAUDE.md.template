@@ -7,16 +7,13 @@ subject. Don't read the whole repository — read only what the index
 below points to for the current task. This exists to save context
 tokens.
 
-**Language convention:** this file, architecture docs, ADRs, and the
-`.claude/` infrastructure (agents/commands/skills) are in
-{{CANONICAL_LANG}} — they're reloaded repeatedly by agents, rarely by
-a human. Specs are canonical in {{CANONICAL_LANG}} too; if a
-non-technical stakeholder needs to validate them and doesn't read
-{{CANONICAL_LANG}} comfortably, `/spec` also generates a
-`.validation-{{STAKEHOLDER_LANG_CODE}}.md` companion for their review.
-If canonical and stakeholder language are the same, delete this split
-entirely — see framework ADR 0001
-for the rationale behind the split existing at all.
+**Language convention:** this file, architecture docs, ADRs, specs and
+the `.claude/` infrastructure (agents/commands/skills) are in
+{{LANGUAGE}}. Write artifacts and replies in {{LANGUAGE}} and, where
+steerable, reason in it too. These stay verbatim (English): frontmatter
+keys and enumerated values, `## Tasks`/`## Reconciliation`, the
+reconciliation outcome phrases, `Approved`/`Returned`, `FR-NN`/`AC-NN`
+ids, code, paths and commands (framework ADR 0023).
 
 ## Decided stack
 
@@ -43,7 +40,6 @@ Full rationale → `docs/decisions/`.
 | Which spec to open (index of all of them, id/title/status) | `docs/product/specs/README.md` | ~150 tok |
 | Which skills apply to my agent role | `.claude/skills/README.md` | ~100 tok |
 | Template for a new requirement | `docs/product/requirements-template.md` | ~410 tok |
-| Stakeholder-facing validation summary format | `docs/product/validation-summary-template.md` | ~150 tok |
 | How specs become code (AI-first flow) | `docs/workflow/ai-first-development.md` | ~600 tok |
 | What to type in chat when building a feature | `docs/workflow/feature-development-guide.md` | ~1150 tok |
 | Running more than one task at once | `docs/workflow/parallel-work.md` | ~750 tok |
@@ -130,8 +126,7 @@ Full rationale → framework ADR 0001.
    something becomes an implementation task, including how a spec
    auto-tags its own `area` and lineage (`relates_to`), and how its
    "## Reconciliation" section tracks spec-vs-code fidelity as tasks
-   are implemented. Specs get a `.validation-{{STAKEHOLDER_LANG_CODE}}.md`
-   companion for their review, if the language split applies.
+   are implemented.
 5. When generating code, the agent should cite which ADR or
    architecture doc grounds the implementation decision, when
    applicable.

@@ -11,6 +11,7 @@ out to need more than that once you look at it, stop and say so
 instead of improvising — don't silently take on standard or
 structural-sized work at this model tier.
 
+- Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
 - Make the pointed change. Don't refactor or clean up code beyond what
   the task asks.
 - If the change affects a test's expected behavior, update that test

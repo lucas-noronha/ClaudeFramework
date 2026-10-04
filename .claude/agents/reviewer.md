@@ -126,6 +126,8 @@ finding of its own (`Returned`), not silently approved. Skip both
 checks for a per-task scope; DoD and reconciliation completeness are
 feature-level questions, not per-task ones.
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 **Reconciliation, per-task scope only** (see
 framework ADR 0009). After deciding
 Approved/Returned, read this task's own line in the spec's "## Tasks"

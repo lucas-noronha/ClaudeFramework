@@ -211,6 +211,11 @@ class TestGateAndRegistration(InstallCase):
     def test_ac05_validation_sync_fires_in_mode_c_subtree_only_when_needed(self):
         repo = self.make_repo("orders", {"Orders.sln": ""})
         self.register_repo(repo)
+        # Registration no longer writes a split (spec 0005 task 11): a legacy project carries it already.
+        config_path = os.path.join(self.ns, "docs", "orders", "project-config.json")
+        legacy = json.loads(self.read(config_path))
+        legacy.update({"canonical_lang": "English", "stakeholder_lang": "Portuguese", "stakeholder_lang_code": "pt"})
+        self.write(config_path, json.dumps(legacy, indent=2) + "\n")
         spec = os.path.join(self.ns, "docs", "orders", "product", "specs", "0001-orders.md")
         body = "## Business context\nwhy\n\n## Functional requirements\n- FR-01: x\n\n## Reconciliation\n"
         self.write(spec, "---\nstatus: approved\n---\n" + body)

@@ -12,5 +12,5 @@ new spec's own `area`/`relates_to` automatically.
 | 0001 | [Mode C (user-level) hardening — lessons from the first real adoption](0001-mode-c-hardening.md) | adoption-modes | implemented | — |
 | 0004 | [Worktree sessions — the framework follows the code into every worktree](0004-worktree-sessions.md) | adoption-modes | implemented | 0001 |
 | 0002 | [Living architecture docs — census, routing frontmatter and verified ground truth](0002-living-architecture-docs.md) | living-docs | implemented | 0001 |
-| 0005 | [Project language — one language for every project artifact and the conversation](0005-project-language.md) | localization | draft | — |
+| 0005 | [Project language — one language for every project artifact and the conversation](0005-project-language.md) | localization | implemented | — |
 | 0003 | [Proportional pipeline cost — a fast lane and cheaper gates](0003-proportional-pipeline-cost.md) | pipeline-cost | implemented | — |

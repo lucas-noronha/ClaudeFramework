@@ -40,6 +40,7 @@ scope rule apply exactly as in the full path.
 3. **Standard** (a feature inside an existing boundary): offer a **lite
    spec** (`AskUserQuestion`: lite spec now / full `/spec` path / cancel).
    On "lite spec":
+   - Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
    - Write **one file** at `<project docs>/product/specs/NNNN-short-name.md`
      (next free number), with this frontmatter: `doc_type: spec`, `id`,
      `status: approved`, `lite: true`, `tier: standard`, `area`,
@@ -52,9 +53,7 @@ scope rule apply exactly as in the full path.
    - Show the user the file before writing it, and write it with
      `status: approved` only after they approve it in that same
      question. The person who asked for the change is the approver here;
-     there's no separate stakeholder round. If the project has a
-     language split and the user wants the stakeholder to validate,
-     that's the full path, not this one.
+     there's no separate stakeholder round.
    - Check the requirements against the constitution layers first, the
      same check `/spec` step 3 does. A conflict stops the lane and goes
      back to the user.

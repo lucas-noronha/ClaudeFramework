@@ -13,6 +13,8 @@ it's `draft`/`approved`, there's nothing shipped yet to reconcile —
 point at `/plan`+`/implement` instead. If it's `abandoned`, stop; there
 is nothing to check.
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 Unlike `/review`, this never blocks a merge and doesn't need the
 build/test gate to have just run — it's a standalone audit, runnable
 any time against a spec that's been sitting in `implemented` for a

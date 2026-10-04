@@ -11,6 +11,8 @@ the common case costs one check and changes nothing.
 If the spec at $ARGUMENTS is `status: abandoned`, stop and warn instead
 of breaking a dropped feature into tasks.
 
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
 Read the spec at $ARGUMENTS, including its "Technical plan" section
 (written by `/plan` — for a standard/structural spec this is now an
 actual technical plan, not just a complexity tier; see

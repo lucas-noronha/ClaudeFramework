@@ -7,9 +7,9 @@ doc" discipline) — better to flag it once than have it go unnoticed.
 
 Architecture docs get one more nudge (framework ADR 0019, framework spec 0002 FR-05): a
 missing routing summary key — the question the doc answers, which index
-tables copy verbatim. The key names default to `resumo`/`naoResponde`
-and are configurable per project (`project-config.json` →
-`routing_keys`), so a project keeps its own vocabulary.
+tables copy verbatim. The key names default to `summary`/`notFor` (the
+older `resumo`/`naoResponde` stay readable as aliases) and are configurable
+per project (`project-config.json` → `routing_keys`, see `_project_paths.routing_keys`).
 """
 import json
 import os
@@ -17,18 +17,9 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import hook_should_run, load_project_config, read_hook_input, resolve_docs_root, resolve_project_root  # noqa: E402
+from _project_paths import hook_should_run, read_hook_input, resolve_docs_root, resolve_project_root, routing_keys  # noqa: E402
 
 REQUIRED_KEYS = ["doc_type", "status", "context_budget"]
-DEFAULT_ROUTING_KEYS = {"summary": "resumo", "not_for": "naoResponde"}
-
-
-def routing_keys(project: str) -> dict:
-    configured = load_project_config(project).get("routing_keys")
-    keys = dict(DEFAULT_ROUTING_KEYS)
-    if isinstance(configured, dict):
-        keys.update({k: v for k, v in configured.items() if k in keys and isinstance(v, str) and v})
-    return keys
 
 
 def main() -> None:
@@ -83,8 +74,10 @@ def main() -> None:
 
     is_architecture = re.search(r"^doc_type:\s*architecture\s*$", frontmatter, re.MULTILINE) or rel.split("/")[-2:-1] == ["architecture"]
     if is_architecture:
-        summary_key = routing_keys(project)["summary"]
-        if not re.search(rf"^{re.escape(summary_key)}:\s*\S", frontmatter, re.MULTILINE):
+        summary = routing_keys(project)["summary"]
+        summary_key = summary["key"]
+        names = "|".join(re.escape(k) for k in [summary_key, *summary["aliases"]])
+        if not re.search(rf"^(?:{names}):\s*\S", frontmatter, re.MULTILINE):
             messages.append(
                 f"{rel} has no `{summary_key}` — add the one question this doc answers "
                 "(index tables copy it verbatim; see docs/workflow/living-architecture-docs.md)."
