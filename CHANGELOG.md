@@ -34,6 +34,16 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
 
 ### Also in this release (outside the three specs)
 
+- **Fixed — `translation.py check` failed correct translations that
+  rewrapped lines** (found 2026-10-04 in the first real pt-BR mode B
+  setup, where 6 of 40 files failed only for this). The check read
+  Markdown line by line, but a single line break inside a paragraph is a
+  space: an inline code span or a `framework ADR NNNN` reference split
+  across two source lines mis-paired, and a wrapped line starting with
+  `0025)` counted as a list item. Code spans now continue over a single
+  line break (never a blank line), references compare with whitespace
+  collapsed, and a numbered line counts as an item only where CommonMark
+  would start one. Covered by `SoftLineBreaks`.
 - **Changed — the framework's own specs and ADRs moved to `evolution/`**
   (framework ADR 0021). The skeleton projects receive is now exactly
   `.claude/`, `docs/`, `CLAUDE.md.template`, `.mcp.json.example` and

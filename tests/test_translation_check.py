@@ -163,6 +163,48 @@ class FidelityCheck(unittest.TestCase):
         self.assertIn("English literals", rules(scope, PT.replace("- [task 1] FR-01: matches spec", "- [task 1] fora do escopo: a.py")))
 
 
+class SoftLineBreaks(unittest.TestCase):
+    """A single line break inside a paragraph is a space in Markdown, so a
+    translation that rewraps lines must not fail on spans, references or
+    numbers the source happened to split across lines."""
+
+    def test_inline_code_split_across_lines(self):
+        src = ("and after the last one `metrics.py finish\n"
+               "--feature <spec id>`. They let `/metrics` attribute subagents.\n")
+        tr = ("e depois da ultima `metrics.py finish --feature <spec id>`.\n"
+              "Eles permitem que o `/metrics` atribua subagentes.\n")
+        self.assertEqual(translation.check(src, tr), [])
+        self.assertIn("inline code spans", rules(src, tr.replace("--feature <spec id>", "--feature <id>")))
+
+    def test_inline_code_never_spans_a_blank_line(self):
+        src = "One `a` here and a stray ` tick.\n\nNext `b` paragraph.\n"
+        self.assertEqual(translation.check(src, "Um `a` aqui e um ` solto.\n\nProximo `b` paragrafo.\n"), [])
+        self.assertIn("inline code spans", rules(src, "Um `a` aqui e um ` solto.\n\nProximo `c` paragrafo.\n"))
+
+    def test_framework_reference_split_across_lines(self):
+        src = "blocks the agent (framework ADR\n0025), so the gate still blocks.\n"
+        tr = "bloqueia o agente (framework ADR 0025),\nentao o gate ainda bloqueia.\n"
+        self.assertEqual(translation.check(src, tr), [])
+        self.assertIn("framework ADR/spec references", rules(src, tr.replace("0025", "0026")))
+
+    def test_wrapped_number_is_not_a_list_item(self):
+        src = ("9. Gate step: it exits with code 2 (framework ADR\n"
+               "   0025) — so the gate still blocks.\n"
+               "10. Next step.\n"
+               "    1. Nested first.\n"
+               "    2. Nested second.\n"
+               "11. Last step.\n")
+        tr = ("9. Passo do gate: sai com codigo 2 (framework ADR 0025)\n"
+              "   — entao o gate ainda bloqueia.\n"
+              "10. Proximo passo.\n"
+              "    1. Primeiro aninhado.\n"
+              "    2. Segundo aninhado.\n"
+              "11. Ultimo passo.\n")
+        self.assertEqual(translation.check(src, tr), [])
+        self.assertIn("numbered-item ordinals", rules(src, tr.replace("11. Ultimo", "12. Ultimo")))
+        self.assertIn("numbered-item ordinals", rules(src, tr.replace("    2. Segundo", "    3. Segundo")))
+
+
 class CheckCli(TempCase):
     def test_L10_failing_file_stays_english_with_reasons(self):  # NFR-04
         src, bad, rec = (os.path.join(self.tmp, n) for n in ("en.md", "pt.md", "rec.json"))

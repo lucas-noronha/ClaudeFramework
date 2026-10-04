@@ -240,15 +240,24 @@ LITERALS = {
 }
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})\s*(.*?)\s*$")
 KEY = re.compile(r"^([A-Za-z_][\w-]*)\s*:(.*)$")
-CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)")
+# A code span may continue over a single line break (Markdown reads it as a
+# space) but never over a blank line; a translation rewraps lines freely.
+CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)((?:(?!\n[ \t]*\n).)+?)(?<!`)\1(?!`)", re.DOTALL)
 SCANS = {
     "placeholders": re.compile(r"\{\{[^{}\n]+\}\}"),
     "/commands": re.compile(r"(?<![\w/.:~<>-])/[a-z][\w-]*"),
     "ids": re.compile(r"\b(?:NFR|FR|AC)-\d+\b|\bT-?\d+\b"),
     "link targets and URLs": re.compile(r"\]\(\s*<?([^)\s>]+)|(https?://[^\s)>\]`]+)"),
     "HTML comments": re.compile(r"<!--.*?-->", re.DOTALL),
-    "framework ADR/spec references": re.compile(r"framework (?:ADR|spec) \d+"),
+    "framework ADR/spec references": re.compile(r"framework\s+(?:ADR|spec)\s+\d+"),
 }
+# Scans whose hits may be split by a line break in prose: compared with
+# whitespace collapsed, so rewrapping is not a change.
+SOFT_WRAP_SCANS = {"framework ADR/spec references"}
+
+
+def _squash(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip())
 
 
 def _runtime_tokens():
@@ -330,11 +339,34 @@ def _diff(rule, a, b, where, reasons):
                         f"extra {sorted((b - a).elements())}"})
 
 
+def _ordinals(prose):
+    """Ordinals of the numbered list items, CommonMark-style: a numbered line
+    that continues a paragraph (e.g. a wrapped `(framework ADR` + `0025) ...`)
+    is an item only when it starts at 1 or is a sibling of an open item."""
+    found, open_indents, in_paragraph = [], [], False
+    for line in prose:
+        if not line.strip():
+            in_paragraph = False
+            continue
+        if re.match(r"^ {0,3}#{1,6}\s", line):
+            open_indents, in_paragraph = [], False
+            continue
+        m = re.match(r"^(\s*)(\d+)[.)]\s", line)
+        indent = len(m.group(1)) if m else len(line) - len(line.lstrip())
+        if m and (not in_paragraph or int(m.group(2)) == 1 or indent in open_indents):
+            found.append(m.group(2))
+            open_indents = [i for i in open_indents if i < indent] + [indent]
+        elif not in_paragraph and indent == 0:
+            open_indents = []  # an unindented paragraph after a blank line ends the list
+        in_paragraph = True
+    return found
+
+
 def _shape(doc):
     prose = doc["prose"]
     return {
         "headings": [len(m.group(1)) for m in (re.match(r"^ {0,3}(#{1,6})\s", l) for l in prose) if m],
-        "ordinals": [m.group(1) for m in (re.match(r"^\s*(\d+)[.)]\s", l) for l in prose) if m],
+        "ordinals": _ordinals(prose),
         "checkboxes": sum(1 for l in prose if re.match(r"^\s*[-*]\s+\[[ xX]\]", l)),
         "tables": [len(re.split(r"(?<!\\)\|", l.strip().strip("|"))) for l in prose if l.strip().startswith("|")],
     }
@@ -360,13 +392,14 @@ def _check_text(src: str, tr: str, where: str, reasons: list, top: bool) -> None
         if not LENGTH_RATIO[0] <= ratio <= LENGTH_RATIO[1]:
             reasons.append({"rule": "length ratio", "detail": f"{ratio:.2f} outside {LENGTH_RATIO}"})
     a, b = ("\n".join((d["front"] or []) + d["prose"]) for d in (s, t))
-    _diff("inline code spans", [m.group(2).strip() for m in CODE_SPAN.finditer(a)],
-          [m.group(2).strip() for m in CODE_SPAN.finditer(b)], where, reasons)
+    _diff("inline code spans", [_squash(m.group(2)) for m in CODE_SPAN.finditer(a)],
+          [_squash(m.group(2)) for m in CODE_SPAN.finditer(b)], where, reasons)
     tokens = _runtime_tokens()
     _diff("runtime tokens", [x for x in tokens for _ in range(a.count(x))],
           [x for x in tokens for _ in range(b.count(x))], where, reasons)
     for rule, rx in SCANS.items():
-        _diff(rule, _hits(rx, a), _hits(rx, b), where, reasons)
+        norm = _squash if rule in SOFT_WRAP_SCANS else (lambda x: x)
+        _diff(rule, [norm(h) for h in _hits(rx, a)], [norm(h) for h in _hits(rx, b)], where, reasons)
     for lit, rx in LITERALS.items():
         na, nb = len(rx.findall(src)), len(rx.findall(tr))
         if na != nb:
