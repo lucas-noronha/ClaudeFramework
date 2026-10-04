@@ -14,3 +14,4 @@ new spec's own `area`/`relates_to` automatically.
 | 0002 | [Living architecture docs — census, routing frontmatter and verified ground truth](0002-living-architecture-docs.md) | living-docs | implemented | 0001 |
 | 0005 | [Project language — one language for every project artifact and the conversation](0005-project-language.md) | localization | implemented | — |
 | 0003 | [Proportional pipeline cost — a fast lane and cheaper gates](0003-proportional-pipeline-cost.md) | pipeline-cost | implemented | — |
+| 0006 | [Spec folders — one folder per spec, one file per artifact](0006-spec-folders.md) | pipeline-cost | draft | 0003 |
