@@ -16,6 +16,10 @@ per framework ADR 0015, without touching the source (framework ADR 0017, framewo
    when free; unnumbered files and collisions take the next free number.
    A source `README.md` inside those two folders becomes
    `legacy-index.md`, since the index hooks own `README.md` there.
+   A spec is always imported as a folder (framework spec 0006 FR-18):
+   `NNNN-slug/spec.md`, plus `plan.md`, `tasks.md` and `reconciliation.md`
+   when the source has those sections (the splitter of
+   `migrate_spec_folders.py`; `--plan-heading`/`--tier-label` as there).
 3. **Frontmatter**: keys are renamed per `--rename-key`, then
    `doc_type`, `status` and `context_budget` are added where missing
    (plus `id` for specs/ADRs and `supersedes`/`superseded_by` for ADRs).
@@ -40,6 +44,9 @@ import posixpath
 import re
 import sys
 import urllib.parse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import migrate_spec_folders  # noqa: E402  (the splitter, reused read-only)
 
 HEURISTICS = [
     (re.compile(r"adr|decis"), "decisions"),
@@ -129,7 +136,11 @@ def plan_moves(source: str, maps):
         if number is None or number in used or number == 0:
             number = max(used | {0}) + 1
         used.add(number)
-        moves[rel] = posixpath.join(new_dir, f"{number:04d}-{slug(rest)}.md")
+        name = f"{number:04d}-{slug(rest)}"
+        if numbered_category(new_dir) == "spec":
+            moves[rel] = posixpath.join(new_dir, name, "spec.md")  # a spec is always a folder
+        else:
+            moves[rel] = posixpath.join(new_dir, name + ".md")
     return moves, sorted(unmapped)
 
 
@@ -153,7 +164,8 @@ def fix_frontmatter(text: str, new_rel: str, renames, statuses):
     new_dir = posixpath.dirname(new_rel)
     doc_type = next((t for prefix, t in DOC_TYPES.items() if new_dir == prefix or new_dir.startswith(prefix + "/")), "doc")
     added = []
-    number = re.match(r"^(\d{4})-", posixpath.basename(new_rel))
+    is_spec_folder = posixpath.basename(new_rel) == "spec.md"
+    number = re.match(r"^(\d{4})-", posixpath.basename(new_dir) if is_spec_folder else posixpath.basename(new_rel))
 
     def add(key, value):
         if key not in keys:
@@ -276,6 +288,9 @@ def main(argv=None) -> int:
     parser.add_argument("--rename-key", action="append", default=[], help="OLD=NEW frontmatter key rename (repeatable)")
     parser.add_argument("--spec-status", default="implemented", help="status for imported specs lacking one")
     parser.add_argument("--adr-status", default="accepted", help="status for imported ADRs lacking one")
+    parser.add_argument("--plan-heading", action="append", metavar="TEXT",
+                        help="heading of a spec's plan section (repeatable; default 'Technical plan')")
+    parser.add_argument("--tier-label", default="Tier", help="label of the plan's tier line")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
 
@@ -299,6 +314,10 @@ def main(argv=None) -> int:
     before = tree_hash(source)
     moves, unmapped = plan_moves(source, maps)
     outputs, link_count, added_keys = {}, 0, {}
+    plan_headings = args.plan_heading or [migrate_spec_folders.DEFAULT_PLAN_HEADING]
+    spec_files = {new for new in moves.values() if posixpath.basename(new) == "spec.md"
+                  and numbered_category(posixpath.dirname(posixpath.dirname(new))) == "spec"}
+    spec_folders = []
     for old_rel, new_rel in sorted(moves.items()):
         with open(os.path.join(source, old_rel), "rb") as f:
             data = f.read()
@@ -309,7 +328,16 @@ def main(argv=None) -> int:
             link_count += n
             if added:
                 added_keys[new_rel] = added
-            outputs[new_rel] = text
+            if new_rel in spec_files:
+                # Links were rewritten for the folder, which companions share, so split afterwards.
+                folder = posixpath.dirname(new_rel)
+                plan = migrate_spec_folders.build_outputs(
+                    text.encode("utf-8"), posixpath.basename(folder)[:4], plan_headings, args.tier_label)
+                for name, entries in plan["files"].items():
+                    outputs[posixpath.join(folder, name)] = migrate_spec_folders.render(entries, False).decode("utf-8")
+                spec_folders.append(folder)
+            else:
+                outputs[new_rel] = text
         else:
             outputs[new_rel] = data
 
@@ -318,7 +346,10 @@ def main(argv=None) -> int:
     with_source = {rel: open(os.path.join(source, rel), encoding="utf-8", errors="replace").read()
                    for rel in moves if rel.lower().endswith(".md")}
     source_broken = broken_links({**{k: "" for k in moves}, **with_source}, source)
-    missing_keys = [rel for rel, text in texts.items() if rel.endswith(".md") and not has_required_keys(text)]
+    companions = {posixpath.join(folder, name) for folder in spec_folders
+                  for name in migrate_spec_folders.FILE_NAMES.values()}  # their header is the splitter's own
+    missing_keys = [rel for rel, text in texts.items()
+                    if rel.endswith(".md") and rel not in companions and not has_required_keys(text)]
 
     if args.apply:
         for rel, content in outputs.items():
@@ -337,6 +368,7 @@ def main(argv=None) -> int:
         "dest": posix(dest),
         "files": len(outputs),
         "moves": {old: new for old, new in sorted(moves.items()) if old != new},
+        "spec_folders": sorted(spec_folders),
         "unmapped_top_level_folders": unmapped,
         "links_rewritten": link_count,
         "frontmatter_keys_added": added_keys,

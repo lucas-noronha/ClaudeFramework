@@ -111,10 +111,14 @@ git worktree list
 
 tells you every active worktree and its branch. If `/worktree` created
 each one as `task/<short-name>` and each spec lives at
-`docs/product/specs/NNNN-<short-name>.md`, the branch name alone tells
+`docs/product/specs/NNNN-<short-name>/` (a legacy single-file spec
+`NNNN-<short-name>.md` works the same), the branch name alone tells
 you which spec a worktree belongs to — no separate bookkeeping needed.
-To see a worktree's task-level progress, check that spec's own "Tasks"
-section (written by `/tasks`) from within that worktree.
+To see a worktree's task-level progress, check that spec's `tasks.md`
+(written by `/tasks`) from within that worktree. Inside one spec's
+sweep, checkboxes go to `tasks.md` and reviewer lines to
+`reconciliation.md`, so parallel tasks don't write the same file
+(framework ADR 0024).
 
 ## Context hygiene while juggling several tasks
 

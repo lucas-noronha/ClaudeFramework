@@ -12,6 +12,11 @@ instead of improvising — don't silently take on standard or
 structural-sized work at this model tier.
 
 - Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+- What you load (framework ADR 0024): the task's full text (its
+  `- [ ] N.` line plus indented sub-bullets) and the `spec.md` path for
+  the overview; open `plan.md` only if the task text is not enough.
+  Never read `tasks.md` whole or `reconciliation.md`. In a legacy
+  single-file spec, read only the relevant sections.
 - Make the pointed change. Don't refactor or clean up code beyond what
   the task asks.
 - If the change affects a test's expected behavior, update that test

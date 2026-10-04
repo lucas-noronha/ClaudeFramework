@@ -8,6 +8,15 @@ skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
 actually live (registering the project first if it isn't yet), and in
 the common case costs one check and changes nothing.
 
+Resolve the spec first (framework ADR 0024) — $ARGUMENTS may be a file, a
+folder or `NNNN`, in either layout:
+`python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" resolve $ARGUMENTS`
+(pass an absolute path, a folder name or `NNNN` — a relative path resolves
+against the current directory).
+Its JSON gives the status file and the **reconciliation target**
+(`reconciliation.md` in a spec folder, the single file's "## Reconciliation"
+section otherwise); that target is where the sweep is read and written.
+
 Prerequisite: the spec at $ARGUMENTS needs `status: implemented`. If
 it's `draft`/`approved`, there's nothing shipped yet to reconcile —
 point at `/plan`+`/implement` instead. If it's `abandoned`, stop; there
@@ -27,8 +36,8 @@ to diff against after the fact).
 
 1. Read the spec's Functional/Non-functional requirements and
    Acceptance Criteria, its "Impact on existing architecture" section,
-   its `area` frontmatter tag, and its existing "## Reconciliation"
-   section (the per-task entries from `/implement`, plus any prior
+   its `area` frontmatter tag, and the existing reconciliation target
+   (the per-task entries from `/implement`, plus any prior
    `### Sweep` block from an earlier `/reconcile` run).
 2. Delegate to `reviewer`, explicitly telling it: **this is a sweep,
    not a diff or a per-task review** — no file list, no build/test gate
@@ -38,7 +47,7 @@ to diff against after the fact).
    state against each `FR-NN`/`AC-NN` the same way it already judges
    Definition of Done for `/review`, just without a diff to anchor on.
 3. `reviewer` appends one new `### Sweep — <today's date, YYYY-MM-DD>` block to the
-   spec's "## Reconciliation" section, one line per `FR-NN`/`AC-NN`:
+   reconciliation target, one line per `FR-NN`/`AC-NN`:
    `still matches`, `now diverged — <reason>`, or `couldn't verify —
    <why>` if the relevant code isn't findable from the spec's own
    pointers. Never edits or removes an earlier sweep's lines — sweeps
@@ -50,5 +59,5 @@ to diff against after the fact).
    task against the spec's own area.
 
 Read-only against the codebase, write-only against the spec's own
-"## Reconciliation" section — this command implements nothing and calls
+reconciliation target — this command implements nothing and calls
 neither `coder` nor `quickfix`.

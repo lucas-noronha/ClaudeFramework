@@ -40,9 +40,13 @@ scope rule apply exactly as in the full path.
 3. **Standard** (a feature inside an existing boundary): offer a **lite
    spec** (`AskUserQuestion`: lite spec now / full `/spec` path / cancel).
    On "lite spec":
-   - Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
-   - Write **one file** at `<project docs>/product/specs/NNNN-short-name.md`
-     (next free number), with this frontmatter: `doc_type: spec`, `id`,
+   - Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, the file names `spec.md`, `plan.md`, `tasks.md` and `reconciliation.md`, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+   - Write a **folder with one file** (framework ADR 0024, framework spec
+     0006): `<project docs>/product/specs/NNNN-quick-<short-name>/spec.md`
+     (next free number, from
+     `python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" next-number`).
+     No `plan.md`, `tasks.md` or `reconciliation.md` — the lite spec keeps
+     tasks and reconciliation inline. It has this frontmatter: `doc_type: spec`, `id`,
      `status: approved`, `lite: true`, `tier: standard`, `area`,
      `relates_to`, `context_budget`. `area`/`relates_to` are inferred as
      in `/spec` step 4. The body holds only: a one-paragraph context,

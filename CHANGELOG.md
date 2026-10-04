@@ -113,8 +113,28 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
   gitignored. See
   [spec 0005](evolution/product/specs/0005-project-language.md) and
   [ADR 0023](evolution/decisions/0023-setup-language.md).
+- **Added — spec folders.** A spec is now a folder,
+  `product/specs/NNNN-short-name/`: `spec.md` (requirements, `status`, `tier`),
+  `plan.md`, `tasks.md` and `reconciliation.md`, plus optional extra notes with
+  a `summary`. Each pipeline step loads only its file, `/tasks` copies each
+  task's Test plan lines under it, and parallel tasks no longer write the same
+  file. `/quick` writes a lite folder `NNNN-quick-<name>/spec.md`. New
+  `_spec_layout.py` resolver; the status, index, number-guard, frontmatter,
+  metrics and session-brief hooks and the settings templates handle folders.
+  Legacy single-file specs keep working. New `migrate_spec_folders.py`
+  (lossless, dry run by default); `migrate_context.py` imports specs as
+  folders. See
+  [spec 0006](evolution/product/specs/0006-spec-folders.md) and
+  [ADR 0024](evolution/decisions/0024-spec-folders.md).
 
 ### Upgrade notes (read before adopting)
+
+- **Spec folders (ADR 0024).** Both layouts are supported, so nothing breaks:
+  new specs are folders, existing single-file specs stay as they are.
+  `python .claude/scripts/migrate_spec_folders.py` migrates them on request
+  (dry run first, `--apply` to write); `migrate_context.py` now imports specs
+  as folders. Mode A: re-merge the permission and `if` filters from
+  `settings.example.json` so writes inside spec folders match.
 
 - **The canonical/stakeholder split is retired (ADR 0023).**
   `stakeholder_lang`, the `.validation-<code>.md` companion and the

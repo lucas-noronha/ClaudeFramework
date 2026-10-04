@@ -56,6 +56,14 @@ and framework ADR 0018):
 
 When implementing:
 - Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+- What you load (framework ADR 0024): your caller hands you the task's
+  full text (its `- [ ] N.` line plus the indented sub-bullets: that
+  task's Test plan lines and, for a structural task, the approach
+  excerpt) and the path of `spec.md` for the feature overview. Open
+  `plan.md` only when the task text is not enough. Never read `tasks.md`
+  whole and never read `reconciliation.md`. For a legacy single-file
+  spec (framework spec 0006), read only the relevant sections of that
+  file the same way.
 - If the task names specific `Test` entries (from `/plan`'s Test plan,
   distributed by `/tasks`), those are exactly the unit tests you write
   for this task — implement each one, tagged with its `FR-NN`/`AC-NN`

@@ -8,16 +8,90 @@ context_budget: ~410 tokens
 
 # Template — requirement intake ({{LANGUAGE}})
 
-Usage: copy this file to `docs/product/specs/NNNN-short-name.md` for
-every new feature, before it becomes an implementation task. One
-feature = one spec. Don't accumulate multiple features in the same
-file — each spec needs to be readable in isolation by an agent without
-loading the others.
+Usage: for every new feature, before it becomes an implementation task,
+create the folder `docs/product/specs/NNNN-short-name/` (framework
+ADR 0024) and write the body below into its `spec.md`. One feature = one
+spec folder. Don't accumulate multiple features in the same folder —
+each spec needs to be readable in isolation by an agent without loading
+the others.
 
 Free text is written in {{LANGUAGE}}; frontmatter keys, enumerated
-values, `## Tasks`/`## Reconciliation`, the reconciliation outcome
-phrases and `Approved`/`Returned` stay English (framework ADR 0023).
-The stakeholder validates this same file — there is no companion.
+values, the file names `spec.md`, `plan.md`, `tasks.md` and
+`reconciliation.md`, `## Tasks`/`## Reconciliation`, the reconciliation
+outcome phrases and `Approved`/`Returned` stay English (framework ADR
+0023, ADR 0024). The stakeholder validates `spec.md` alone.
+
+## Folder layout
+
+One file per pipeline artifact, each with a single owner. No per-folder
+index or `README.md`; each file's `summary` and the specs index cover
+that role.
+
+| File | Created by | Holds |
+| --- | --- | --- |
+| `spec.md` | `/spec` | Frontmatter and the requirement sections below, "Feature name" to "Impact on existing architecture". Its `status` and `tier` are the only lines that change after approval. |
+| `plan.md` | `/plan` (standard and structural; a trivial spec has none) | Approach, ADR reference, scope check, Definition of Done, Test plan. |
+| `tasks.md` | `/tasks` | `## Tasks`, one checkbox per task. |
+| `reconciliation.md` | `/spec`, empty | `## Reconciliation`, written by `reviewer` and `/reconcile`. |
+
+A pipeline step may add an extra file the spec needs (for example
+`research.md`), directly in the folder, with `doc_type: spec-note`. It
+never holds requirement, plan, task or reconciliation content.
+
+A **lite spec** (`/quick`) is a folder `NNNN-quick-<short-name>/` with a
+single `spec.md` (`lite: true`, `tier: standard`) holding context, FRs,
+ACs, an inline `## Tasks` and an empty `## Reconciliation`. A legacy
+single-file spec `NNNN-short-name.md` keeps working in its own layout.
+
+Every file other than `spec.md` carries this minimal frontmatter and
+never a `status`:
+
+```yaml
+---
+doc_type: spec-plan   # or spec-tasks | spec-reconciliation | spec-note
+spec: NNNN
+summary: <what this file answers>
+context_budget: ~300 tokens   # estimate from the file's real size (chars/4), not a fixed value
+---
+```
+
+Skeletons of the other three files (the title and headings are fixed):
+
+`plan.md`:
+
+```markdown
+# Technical plan
+
+**ADR:** <reference, if any>
+
+## Approach
+## Scope check
+## Definition of Done
+- [ ] <numbered against the spec's FR/AC>
+## Test plan
+- S01: <scenario> — FR-01, AC-01
+```
+
+`tasks.md` (the sub-bullets are plain, never checkboxes, and carry the
+task's own Test plan lines and, for a structural spec, its approach
+excerpt):
+
+```markdown
+## Tasks
+
+- [ ] 1. <task> — Depends on: none — Tests: S01
+  - S01: <full text of that Test plan line>
+  - Approach: <excerpt of plan.md that applies, structural specs only>
+```
+
+`reconciliation.md`:
+
+```markdown
+## Reconciliation
+```
+
+`spec.md`'s frontmatter also gains `tier: trivial | standard | structural`,
+set by `/plan`.
 
 ---
 
@@ -102,7 +176,9 @@ traced from a test back to the requirement it exists for. -->
 architecture doc, don't re-explain it here. -->
 
 ## Reconciliation
-<!-- Populated automatically and incrementally by `reviewer` during
+<!-- Lives in `reconciliation.md` for a folder spec (not in `spec.md`); in
+the body of a lite or legacy single-file spec only.
+Populated automatically and incrementally by `reviewer` during
 `/implement`'s per-task pass
 (framework ADR 0009) — one line per
 FR/AC a task claimed via its `Tests:` field, noting whether what was

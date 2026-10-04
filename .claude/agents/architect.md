@@ -28,6 +28,10 @@ When deciding:
   `docs/decisions/000N-short-name.md`, following the format in the
   `adr-writing` skill, with `status: proposed`.
 - Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+- What you load (framework ADR 0024): `spec.md`, plus the existing
+  `plan.md` when re-planning. Your plan output goes to `plan.md` via
+  `/plan` in a spec folder, or to the "## Technical plan" section of a
+  legacy single-file spec.
 - Never mark the ADR as accepted — that's a human decision. End by
   clearly stating that the draft awaits approval before `coder`
   proceeds.

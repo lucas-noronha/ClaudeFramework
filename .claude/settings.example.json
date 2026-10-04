@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Edit(docs/product/specs/*)"
+      "Edit(docs/product/specs/*)",
+      "Edit(docs/product/specs/*/*)"
     ]
   },
   "hooks": {
@@ -45,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Write(docs/product/specs/*)",
+            "if": "Write(docs/product/specs/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_number_guard.py\""
           }
         ]
@@ -148,12 +149,12 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Write(docs/product/specs/*)",
+            "if": "Write(docs/product/specs/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_index.py\""
           },
           {
             "type": "command",
-            "if": "Write(docs/product/specs/*)",
+            "if": "Write(docs/product/specs/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
           }
         ]
@@ -201,17 +202,17 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Edit(docs/product/specs/*)",
+            "if": "Edit(docs/product/specs/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_index.py\""
           },
           {
             "type": "command",
-            "if": "Edit(docs/product/specs/*)",
+            "if": "Edit(docs/product/specs/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_status_sync.py\""
           },
           {
             "type": "command",
-            "if": "Edit(docs/product/specs/*)",
+            "if": "Edit(docs/product/specs/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
           }
         ]

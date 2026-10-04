@@ -4,15 +4,21 @@ written or edited. Lets an agent see what specs exist, their status,
 and their lineage (see framework ADR 0008)
 without opening or globbing every file. Writes the filesystem directly
 (not through the Write/Edit tool), so it never re-triggers itself.
+
+One row per spec across the layouts (framework ADR 0024 section 3): a
+folder's row is titled from its `spec.md` and links to it; a legacy file's
+row is unchanged. When the same edit makes a status flip due,
+`spec_status_sync.py` flips and rebuilds in process, so this hook stays
+silent. `rebuild(project_dir)` is importable for that.
 """
-import glob
 import json
 import os
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import hook_should_run, normalize, read_hook_input, resolve_docs_root, resolve_shared_docs_root  # noqa: E402
+import _spec_layout  # noqa: E402
+from _project_paths import hook_should_run, normalize, read_hook_input, resolve_shared_docs_root, specs_dir as project_specs_dir  # noqa: E402
 
 
 def title_from_filename(basename: str) -> str:
@@ -22,41 +28,41 @@ def title_from_filename(basename: str) -> str:
     return words[:1].upper() + words[1:] if words else "(untitled)"
 
 
-def parse_spec(path: str):
-    try:
-        with open(path, encoding="utf-8") as f:
-            content = f.read()
-    except FileNotFoundError:
-        return None
+def parse_spec(ref: dict):
+    """One index row from a resolver reference: from `spec.md` (or the
+    single file), or `unknown` for a folder that has no `spec.md` yet.
+    """
+    entry = ref["folder"] or ref["spec_file"]
+    name = os.path.basename(entry)
+    spec_file = ref["spec_file"]
+    content = _spec_layout.read_text(spec_file) if spec_file else ""
 
     # Only look inside the YAML frontmatter block — a spec's body can
     # otherwise contain lines that look like frontmatter fields and get
     # matched by mistake.
-    fm_match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
-    frontmatter = fm_match.group(1) if fm_match else ""
+    fm = _spec_layout.frontmatter(content)
 
-    id_match = re.search(r"^id:\s*(\d{4})", frontmatter, re.MULTILINE)
-    status_match = re.search(r"^status:\s*(.+)$", frontmatter, re.MULTILINE)
-    area_match = re.search(r"^area:\s*(.+)$", frontmatter, re.MULTILINE)
-    relates_match = re.search(r"^relates_to:\s*(.+)$", frontmatter, re.MULTILINE)
+    id_match = re.match(r"\d{4}", fm.get("id", ""))
     heading_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
 
-    basename = os.path.basename(path)
-    spec_id = id_match.group(1) if id_match else basename[:4]
-
     heading = heading_match.group(1).strip() if heading_match else ""
-    title = heading if heading and heading.lower() != "feature name" else title_from_filename(basename)
+    title = heading if heading and heading.lower() != "feature name" else title_from_filename(name)
 
-    area = area_match.group(1).strip() if area_match else ""
-    related_ids = re.findall(r"\d{4}", relates_match.group(1)) if relates_match else []
+    area = fm.get("area", "").strip()
+    related_ids = re.findall(r"\d{4}", fm.get("relates_to", ""))
+
+    if ref["folder"]:
+        link = f"{name}/spec.md" if spec_file else f"{name}/"
+    else:
+        link = name
 
     return {
-        "id": spec_id,
-        "status": status_match.group(1).strip() if status_match else "unknown",
+        "id": id_match.group(0) if id_match else name[:4],
+        "status": fm.get("status", "").strip() or "unknown",
         "area": area if area else "(unassigned)",
         "related": related_ids,
         "title": title,
-        "file": basename,
+        "file": link,
     }
 
 
@@ -79,39 +85,17 @@ def shared_doc_ref(project: str, from_dir: str, shared_relpath: str, label: str)
     return label
 
 
-def main() -> None:
-    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
-    # a user-level install; always open in modes A/B.
-    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
-        return
-
-    data = read_hook_input()
-    path = data.get("tool_input", {}).get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
-    if not path:
-        return
-
-    project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
-    abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
-
-    # Self-gating: this hook fires on every Write/Edit in the multi-project
-    # settings variant, so it decides relevance itself rather than trusting
-    # a literal-prefix `if` condition — it compares the tool-reported
-    # path's own directory against the resolved specs_dir directly instead,
-    # which works regardless of which of the two path shapes a tool call
-    # reports (see resolve_docs_root in _project_paths.py).
-    if normalize(os.path.dirname(abspath)) != normalize(specs_dir):
-        return
-    if os.path.basename(abspath) == "README.md":
-        return
-
+def rebuild(project: str) -> str:
+    """Rewrite the specs README.md index for `project` and return the
+    one-line summary message.
+    """
+    specs_dir = project_specs_dir(project)
     entries = []
-    for candidate in sorted(glob.glob(os.path.join(specs_dir, "[0-9][0-9][0-9][0-9]-*.md"))):
-        if ".validation-" in os.path.basename(candidate):
+    for ref in _spec_layout.iter_specs(specs_dir):
+        entry = ref["folder"] or ref["spec_file"]
+        if ".validation-" in os.path.basename(entry):
             continue
-        entry = parse_spec(candidate)
-        if entry:
-            entries.append(entry)
+        entries.append(parse_spec(ref))
     entries.sort(key=lambda e: (e["area"], e["id"]))
 
     # Framework ADRs live in the framework repository (evolution/), never in
@@ -136,11 +120,45 @@ def main() -> None:
         related = ", ".join(e["related"]) if e["related"] else "—"
         lines.append(f"| {e['id']} | [{e['title']}]({e['file']}) | {e['area']} | {e['status']} | {related} |")
 
+    os.makedirs(specs_dir, exist_ok=True)
     with open(os.path.join(specs_dir, "README.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
     areas = len({e["area"] for e in entries})
-    print(json.dumps({"systemMessage": f"docs/product/specs/README.md index refreshed ({len(entries)} specs, {areas} area(s))."}))
+    return f"docs/product/specs/README.md index refreshed ({len(entries)} specs, {areas} area(s))."
+
+
+def main() -> None:
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
+    path = data.get("tool_input", {}).get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
+    if not path:
+        return
+
+    project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
+    abspath = path if os.path.isabs(path) else os.path.join(project, path)
+    if ".validation-" in os.path.basename(abspath):
+        return
+
+    # Self-gating: this hook fires on every Write/Edit in the multi-project
+    # settings variant, so the resolver decides relevance (a spec file or any
+    # file inside a spec folder, at the right depth) instead of a literal-prefix
+    # `if` condition.
+    ref = _spec_layout.classify(project_specs_dir(project), abspath)
+    if ref is None:
+        return
+
+    # One index writer per flip: when this edit makes the status flip due,
+    # spec_status_sync.py flips and rebuilds in process.
+    import spec_status_sync  # noqa: E402  (imports this module; kept lazy)
+    if ref["role"] in ("spec", "tasks") and spec_status_sync.flip_due(ref):
+        return
+
+    print(json.dumps({"systemMessage": rebuild(project)}))
 
 
 if __name__ == "__main__":

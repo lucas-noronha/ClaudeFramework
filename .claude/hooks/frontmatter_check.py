@@ -17,9 +17,14 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import hook_should_run, read_hook_input, resolve_docs_root, resolve_project_root, routing_keys  # noqa: E402
+import _spec_layout  # noqa: E402
+from _project_paths import hook_should_run, read_hook_input, resolve_docs_root, resolve_project_root, routing_keys, specs_dir  # noqa: E402
 
 REQUIRED_KEYS = ["doc_type", "status", "context_budget"]
+# A spec folder's companion files (plan, tasks, reconciliation, notes) carry no
+# `status` (the status lives in spec.md) but do carry `spec` and a routing
+# summary (framework ADR 0024 section 5). `tier:` is a known key: no nudge.
+COMPANION_KEYS = ["doc_type", "spec", "summary", "context_budget"]
 
 
 def main() -> None:
@@ -66,17 +71,23 @@ def main() -> None:
         return
 
     frontmatter = fm_match.group(1)
-    missing = [k for k in REQUIRED_KEYS if not re.search(rf"^{k}:\s*\S", frontmatter, re.MULTILINE)]
+    ref = _spec_layout.classify(specs_dir(project), abspath)
+    is_companion = bool(ref) and ref["layout"] != "legacy" and ref["role"] != "spec"
+    summary_key = routing_keys(project)["summary"]["key"]
+    summary_names = [summary_key, *routing_keys(project)["summary"]["aliases"]]
+    missing = []
+    for k in (COMPANION_KEYS if is_companion else REQUIRED_KEYS):
+        names = summary_names if k == "summary" else [k]
+        if not any(re.search(rf"^{re.escape(n)}:\s*\S", frontmatter, re.MULTILINE) for n in names):
+            missing.append(summary_key if k == "summary" else k)
 
     messages = []
     if missing:
         messages.append(f"{rel} is missing frontmatter field(s): {', '.join(missing)}.")
 
     is_architecture = re.search(r"^doc_type:\s*architecture\s*$", frontmatter, re.MULTILINE) or rel.split("/")[-2:-1] == ["architecture"]
-    if is_architecture:
-        summary = routing_keys(project)["summary"]
-        summary_key = summary["key"]
-        names = "|".join(re.escape(k) for k in [summary_key, *summary["aliases"]])
+    if is_architecture and not is_companion:
+        names = "|".join(re.escape(k) for k in summary_names)
         if not re.search(rf"^(?:{names}):\s*\S", frontmatter, re.MULTILINE):
             messages.append(
                 f"{rel} has no `{summary_key}` — add the one question this doc answers "

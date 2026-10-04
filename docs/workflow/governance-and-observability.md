@@ -109,9 +109,9 @@ different name.
 
 ## How these four relate
 
-The constitution is a standing check, always relevant. Area/lineage and
-reconciliation both live on the spec file itself, growing over that
-spec's life. Metrics are the only one that looks *across* specs —
+The constitution is a standing check, always relevant. Area/lineage live in the spec's `spec.md` and
+reconciliation in its `reconciliation.md` (a lite or legacy spec keeps both in
+its one file), growing over that spec's life. Metrics are the only one that looks *across* specs —
 everything else stays scoped to one spec at a time. None of the four
 gate each other: a project can adopt any subset independently, and
 none of them require `docs/constitution.md` to exist except the first

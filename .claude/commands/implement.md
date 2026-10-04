@@ -21,6 +21,19 @@ in mode A; absent means the default):
   so does the build/test gate.
 - **`census.enabled`** (framework ADR 0019): turns on step 8.
 
+**Resolve the spec first** (framework ADR 0024). Both layouts exist — the
+legacy single file and the spec folder (`spec.md` + `plan.md` +
+`tasks.md` + `reconciliation.md`), plus the one-file lite spec. $ARGUMENTS
+may name a task, a number `NNNN`, a folder or a file; resolve the spec with
+`python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" resolve <path|folder|NNNN>`
+(pass an absolute path, a folder name or `NNNN` — a relative path resolves
+against the current directory).
+Its JSON gives the layout (`legacy`, `folder` or `lite`), the id, the
+spec's files, the status file, the **tasks target** (`tasks.md`, or the
+single file's "## Tasks"), the **reconciliation target** (`reconciliation.md`,
+or the single file's "## Reconciliation") and the **branch short name**.
+Use those values everywhere below instead of assuming a path.
+
 Two modes, based on $ARGUMENTS.
 
 ## Single-task mode — $ARGUMENTS names one task
@@ -30,9 +43,13 @@ Two modes, based on $ARGUMENTS.
 2. **Trivial** → delegate to `quickfix` (cheaper model, same
    expectation of tests alongside the change).
 3. **Standard/structural** → delegate to `coder`.
-4. Pass only the specific task and the source spec's path — never the
-   whole repository nor other tasks from the same spec, so the
-   subagent's own context stays scoped to exactly this task.
+4. Pass only the task's full text (its `- [ ] N.` line plus its indented
+   sub-bullets, read from the tasks target) and the path of the spec's
+   `spec.md` (the single file in the legacy and lite layouts) — never the
+   whole repository, other tasks from the same spec, `tasks.md` as a
+   whole, `reconciliation.md` or `plan.md` (framework ADR 0024). The
+   subagent may open `plan.md` only if the task text is insufficient. This
+   keeps its context scoped to exactly this task.
 5. After the subagent finishes, the project's build/lint/test hook
    runs automatically. If it fails, return the result to the subagent
    before considering the task done.
@@ -44,10 +61,11 @@ Two modes, based on $ARGUMENTS.
    for `reviewer` to compute itself. This isn't optional phrasing: this
    framework's own working tree can hold several tasks' uncommitted
    changes at once during orchestration mode, so a scope-less `git
-   diff` would pull in work that isn't this task's. As part of this same
-   pass, `reviewer` also appends reconciliation entries to the spec's
-   own "## Reconciliation" section for this task's declared `FR-NN`/
-   `AC-NN` tags (see framework ADR 0009)
+   diff` would pull in work that isn't this task's. Hand it also the
+   reconciliation target path from the resolver (`reconciliation.md`, or
+   the single file's "## Reconciliation" section). As part of this same
+   pass, `reviewer` also appends reconciliation entries there for this
+   task's declared `FR-NN`/`AC-NN` tags (see framework ADR 0009)
    — nothing extra to orchestrate here, it's the same call. A
    **quickfix**-tier task skips review (and therefore reconciliation)
    entirely — per `docs/workflow/model-tiering.md`, don't spend a
@@ -56,10 +74,12 @@ Two modes, based on $ARGUMENTS.
    discipline (see `plugin-awareness`) before re-implementing;
    re-review once more (same explicit file-list scope), then proceed
    either way.
-7. Check the corresponding box (`- [ ]` → `- [x]`) in the spec's
-   "## Tasks" section. A hook flips the spec's own `status` to
-   `implemented` once every task box in the section is checked — never
-   set that status by hand.
+7. Look the spec up again by its id with the resolver (a migration to the
+   folder layout may have moved it during a sweep — framework ADR 0024),
+   then check the corresponding box (`- [ ]` → `- [x]`) in the tasks
+   target. A hook flips the spec's own `status` (in the status file) to
+   `implemented` once every task box is checked — never set that status
+   by hand.
 8. **Census projects only** (`census.enabled`): update every
    architecture doc this task made untrue (the subagent's report names
    them; keep to describing, no inventory counts), then record the
@@ -83,8 +103,9 @@ framework ADR 0004):
 
 1. **Worktree check** (see
    framework ADR 0005): run `git worktree
-   list` and look for a branch named `task/<spec-short-name>` (matching
-   this spec's own filename slug).
+   list` and look for a branch named `task/<branch short name>` (the
+   resolver's value: the spec's slug without the number, `quick-` kept
+   for quick specs).
    - If the **current** session's working directory already is that
      worktree: continue to step 1b, nothing else changes.
    - If it doesn't exist yet: ask (`AskUserQuestion`) whether to isolate
@@ -93,7 +114,7 @@ framework ADR 0004):
      or want a clean, spec-scoped diff and PR at the end. Suggest yes by
      default for standard/structural tiers, genuinely optional for
      trivial. If yes: create it using `/worktree`'s own steps (branch
-     `task/<spec-short-name>`, pinned to
+     `task/<branch short name>`, pinned to
      `origin/{{MAIN_INTEGRATION_BRANCH}}`), then **stop** — tell the
      user to open a new Claude Code session there and re-run
      `/implement` on this same spec from inside it. Don't try to
@@ -114,7 +135,8 @@ framework ADR 0004):
    and after the last one (or when the sweep stops) `metrics.py finish
    --feature <spec id>`. They let `/metrics` attribute subagents, gate
    runs and reviewer verdicts to this feature.
-2. Read the "## Tasks" section; parse each unchecked task's **Depends
+2. Read the tasks target (`tasks.md`, or the single file's "## Tasks"
+   section); parse each unchecked task's **Depends
    on** field. Treat a missing or unclear dependency note as "depends
    on every earlier task" — never infer parallel-safety from a task's
    content alone.
@@ -124,7 +146,7 @@ framework ADR 0004):
    parallel, not sequential — each following single-task mode above
    (steps 1–8) in full, including its own build/test gate and, for
    coder-tier tasks, its own `reviewer` pass. Every task gets its own
-   isolated subagent context: only that task's text and the spec path,
+   isolated subagent context: only that task's full text and the `spec.md` path,
    never the other tasks in the wave or the orchestration history —
    this is what keeps a multi-task sweep from polluting any one
    subagent's context, and it's also why the main session stays cheap:

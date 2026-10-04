@@ -6,11 +6,13 @@ anything a human wrote. See framework ADR 0011.
 
 Wired to several different triggers in settings.json, all landing here:
 
-- Write to docs/product/specs/*.md (a new spec) -> "spec_created"
-- Edit/Write to docs/product/specs/*.md -> "reconciliation_snapshot"
-  (counts "## Reconciliation" lines by outcome; a snapshot of the
+- Write to a spec (docs/product/specs/NNNN-*.md, or a folder's spec.md)
+  -> "spec_created"
+- Edit/Write to a spec's reconciliation target -> "reconciliation_snapshot"
+  (a folder's reconciliation.md, or the "## Reconciliation" section of a
+  lite/legacy single file; counts lines by outcome; a snapshot of the
   CURRENT total, not a delta, so it's correct regardless of how the
-  Edit was actually applied under the hood)
+  Edit was actually applied under the hood; framework ADR 0024)
 - PostToolUse on any subagent dispatch -> "subagent_dispatched"
   (framework ADR 0020: the per-feature subagent count `/metrics` compares)
 - PostToolUse on a subagent dispatch whose subagent_type is "reviewer"
@@ -39,7 +41,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _pipeline_metrics import log_event  # noqa: E402
-from _project_paths import framework_config, hook_should_run, normalize, read_hook_input, resolve_docs_root  # noqa: E402
+import _spec_layout  # noqa: E402
+from _project_paths import framework_config, hook_should_run, read_hook_input, specs_dir as specs_dir_of  # noqa: E402
 
 RECONCILIATION_SECTION = re.compile(r"^##\s*Reconciliation\s*$(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL)
 
@@ -57,24 +60,36 @@ def spec_frontmatter(content: str):
     )
 
 
-def handle_spec_write(project: str, abspath: str, is_new_write: bool) -> None:
-    try:
-        with open(abspath, encoding="utf-8") as f:
-            content = f.read()
-    except FileNotFoundError:
-        return
-
-    spec_id, area, status = spec_frontmatter(content)
+def handle_spec_write(project: str, ref: dict, abspath: str, is_new_write: bool) -> None:
+    """`ref` is the `_spec_layout` reference of the edited file (framework
+    ADR 0024 section 4): the spec's id and status come from its `spec.md`
+    (or the legacy file), the reconciliation from wherever the layout keeps
+    it — a folder's `reconciliation.md` (whole file) or the `## Reconciliation`
+    section of a lite/legacy single file.
+    """
+    spec_file = ref.get("spec_file")
+    spec_id = area = status = None
+    if spec_file:
+        spec_id, area, status = spec_frontmatter(_spec_layout.read_text(spec_file))
+    spec_id = spec_id or (ref.get("id") if re.fullmatch(r"\d{4}", str(ref.get("id") or "")) else None)
     if not spec_id:
         return
 
-    if is_new_write and status == "draft":
+    if is_new_write and ref.get("role") == "spec" and status == "draft":
         log_event(project, "spec_created", spec_id=spec_id, area=area)
 
-    section = RECONCILIATION_SECTION.search(content)
-    if not section:
-        return
-    body = section.group(1)
+    target = ref.get("reconciliation") or {}
+    target_file = target.get("file")
+    if not target_file or os.path.normcase(os.path.abspath(target_file)) != os.path.normcase(os.path.abspath(abspath)):
+        return  # an edit to plan/tasks/notes (or a folder's spec.md) carries no reconciliation
+    content = _spec_layout.read_text(abspath)
+    if target.get("section"):
+        section = RECONCILIATION_SECTION.search(content)
+        if not section:
+            return
+        body = section.group(1)
+    else:
+        body = content
     matches = len(re.findall(r"^\s*-\s*\[task \S+\].*?:\s*matches spec", body, re.MULTILINE))
     diverged = len(re.findall(r"^\s*-\s*\[task \S+\].*?:\s*diverged", body, re.MULTILINE))
     out_of_scope = len(re.findall(r"^\s*-\s*\[task \S+\]\s*out of scope", body, re.MULTILINE))
@@ -123,7 +138,8 @@ def handle_subagent_dispatch(project: str, data: dict) -> None:
         return  # doesn't match reviewer's documented reply format — skip rather than guess
 
     prompt_text = str(tool_input.get("prompt", "") or tool_input.get("description", ""))
-    spec_match = re.search(r"(\d{4})-[\w-]+\.md", prompt_text)
+    # `NNNN-name.md` (legacy file), `NNNN-name/` or `NNNN-name/spec.md` (folder).
+    spec_match = re.search(r"(\d{4})-[\w-]+(?:\.md|/)", prompt_text)
     log_event(project, "reviewer_verdict", verdict=verdict, spec_id=spec_match.group(1) if spec_match else None)
 
 
@@ -145,21 +161,23 @@ def main() -> None:
     if not path:
         return
     abspath = path if os.path.isabs(path) else os.path.join(project, path)
-    specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
+    specs_dir = specs_dir_of(project)
 
     # Self-gating: this hook fires on every Write/Edit in the multi-project
     # settings variant, so it decides relevance itself rather than trusting
-    # a literal-prefix `if` condition — it compares the tool-reported
-    # path's own directory against the resolved specs_dir directly instead,
-    # which works regardless of which of the two path shapes a tool call
-    # reports (see resolve_docs_root in _project_paths.py).
-    if normalize(os.path.dirname(abspath)) != normalize(specs_dir):
-        return
+    # a literal-prefix `if` condition — `_spec_layout.classify` compares the
+    # tool-reported path against the resolved specs_dir (a legacy file, or a
+    # file one folder level down), which works regardless of which of the
+    # two path shapes a tool call reports (see resolve_docs_root in
+    # _project_paths.py).
     base = os.path.basename(abspath)
-    if base == "README.md" or ".validation-" in base:
+    if ".validation-" in base:
+        return
+    ref = _spec_layout.classify(specs_dir, abspath)
+    if ref is None:
         return
 
-    handle_spec_write(project, abspath, is_new_write=(tool_name == "Write"))
+    handle_spec_write(project, ref, abspath, is_new_write=(tool_name == "Write"))
 
 
 if __name__ == "__main__":

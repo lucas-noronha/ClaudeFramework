@@ -231,6 +231,11 @@ LITERALS = {
     "out of scope": re.compile(r"\]\s*out of scope"),
     "Approved": re.compile(r"\bApproved\b"),
     "Returned": re.compile(r"\bReturned\b"),
+    # Spec-folder file names (spec 0006 FR-09): fixed English words, never translated.
+    "spec.md": re.compile(r"(?<![\w.])spec\.md(?!\w)"),
+    "plan.md": re.compile(r"(?<![\w.])plan\.md(?!\w)"),
+    "tasks.md": re.compile(r"(?<![\w.])tasks\.md(?!\w)"),
+    "reconciliation.md": re.compile(r"(?<![\w.])reconciliation\.md(?!\w)"),
 }
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})\s*(.*?)\s*$")
 KEY = re.compile(r"^([A-Za-z_][\w-]*)\s*:(.*)$")

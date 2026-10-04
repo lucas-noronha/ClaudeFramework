@@ -405,6 +405,14 @@ def resolve_docs_root(project_dir: str) -> str:
     return root
 
 
+def specs_dir(project_dir: str) -> str:
+    """The project's `product/specs` folder in every mode: mode A
+    `<repo>/docs/product/specs`, routed `<subtree>/product/specs` (framework
+    ADR 0024 section 1). The one place that join is written.
+    """
+    return os.path.join(resolve_docs_root(project_dir), "product", "specs")
+
+
 def _real(path: str) -> str:
     try:
         return os.path.realpath(path)

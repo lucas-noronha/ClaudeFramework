@@ -28,7 +28,10 @@ framework ADR 0001 and the
    (outside this docs repository — can be a call, free text, etc.).
 2. **Formalize as a spec**, using
    `../product/requirements-template.md`, saved at
-   `docs/product/specs/NNNN-short-name.md`. One spec per feature. `/spec`
+   `docs/product/specs/NNNN-short-name/spec.md` (a folder: `/plan` adds
+   `plan.md`, `/tasks` `tasks.md`, review adds to `reconciliation.md`, so each
+   step loads only its own file; extra notes carry a `summary`; legacy
+   single-file specs still work; framework ADR 0024). One spec per feature. `/spec`
    also auto-tags the spec's own `area` and lineage (`relates_to`) by
    reading the existing spec index — never something you declare by
    hand.

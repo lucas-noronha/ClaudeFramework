@@ -5,6 +5,7 @@ status: implemented
 area: pipeline-cost
 relates_to: []
 context_budget: ~1700 tokens
+tier: structural
 ---
 
 # Proportional pipeline cost — a fast lane and cheaper gates
@@ -93,33 +94,3 @@ Developer using the pipeline; framework maintainer choosing defaults.
 - `run_build_test.py` gains an agent filter.
 - The validation-summary hook is split into a command pre-check plus an agent.
 
-## Reconciliation
-
-Recorded after the fact: this spec was implemented directly on 2026-10-03, without `/plan` and `/tasks`; the sections below document what was actually done, so the pipeline's own bookkeeping holds.
-
-- [task 1] FR-01: matches spec
-- [task 2] FR-02: matches spec — known gap: a non-coder agent editing only through Bash doesn't trigger the gate
-- [task 3] FR-03: diverged — the command hook decides as specified, but hands the sync to the session through additionalContext instead of starting an agent hook (a hook can't start an agent conditionally)
-- [task 4] FR-04: matches spec
-- [task 5] FR-05: matches spec — attribution by time window; overlapping features are flagged
-- [task 1] NFR-01: matches spec
-- [task 4] NFR-02: matches spec
-- [task 1] AC-01: couldn't verify — command instruction only; not yet exercised in a real session
-- [task 2] AC-02: matches spec — tests plus real SubagentStop payloads captured 2026-10-03
-- [task 3] AC-03: matches spec
-- [task 4] AC-04: couldn't verify — command instruction only
-- [task 5] AC-05: matches spec
-
-## Technical plan
-
-Recorded after the fact: this spec was implemented directly on 2026-10-03, without `/plan` and `/tasks`; the sections below document what was actually done, so the pipeline's own bookkeeping holds.
-
-**Tier:** structural. **ADR:** framework ADR 0020 (amends 0004). Traceability per FR/AC: `CHANGELOG.md`.
-
-## Tasks
-
-- [x] 1. `/quick` fast lane; `triage` and `quickfix` accept free-text requests — Tests: FR-01, NFR-01, AC-01
-- [x] 2. Build/test gate filtered by agent type and the subagent's own transcript — Tests: FR-02, AC-02
-- [x] 3. `validation_sync_check.py` replaces the always-on agent hook — Tests: FR-03, AC-03
-- [x] 4. `review_policy` in `/implement` and `/review` — Tests: FR-04, NFR-02, AC-04
-- [x] 5. Per-feature metrics: `subagent_dispatched`, `gate_run`, feature markers, `/metrics` — Tests: FR-05, AC-05

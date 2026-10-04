@@ -6,9 +6,15 @@ argument-hint: the spec's own short-name (e.g. leave-approval-flow), matching do
 Goal: guarantee the new worktree never inherits uncommitted work from
 another spec in progress. Follow this order, don't skip a step:
 
-1. `$ARGUMENTS` must be the spec's own short-name — the same one in
-   `docs/product/specs/NNNN-<short-name>.md` — so the branch
-   (`task/<short-name>`) and the spec filename match exactly.
+1. `$ARGUMENTS` must be the spec's own short-name — the slug after the
+   number, in either layout (`docs/product/specs/NNNN-<short-name>.md` or
+   `docs/product/specs/NNNN-<short-name>/`; `quick-` kept for quick
+   specs) — so the branch (`task/<short-name>`) and the spec match
+   exactly (framework ADR 0024). Confirm it when unsure with
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" resolve <NNNN or NNNN-short-name>`
+   (the number or the full folder/file name, never the bare slug) and read
+   `short_name` from the JSON: that is what `$ARGUMENTS` must be (the
+   JSON's `branch` is already `task/<short_name>`).
    `/implement`'s orchestration mode looks up the worktree by that
    exact match (see
    framework ADR 0005); a mismatched name

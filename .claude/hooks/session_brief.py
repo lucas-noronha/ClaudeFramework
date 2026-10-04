@@ -3,7 +3,6 @@ status + specs still in flight (not `implemented` or `abandoned`) +
 the last session's handoff note, if any) so Claude doesn't have to
 spend tool calls re-discovering it at the start of every session.
 """
-import glob
 import json
 import os
 import re
@@ -11,7 +10,8 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import hook_should_run, linked_worktree, resolve_docs_root, state_file_path  # noqa: E402
+import _spec_layout  # noqa: E402
+from _project_paths import hook_should_run, linked_worktree, specs_dir, state_file_path  # noqa: E402
 
 HANDOFF_CHAR_LIMIT = 800  # bound the cost of a stale/verbose last_assistant_message
 
@@ -50,19 +50,18 @@ def main() -> None:
         pass
 
     pending = []
-    specs_dir = os.path.join(resolve_docs_root(project), "product", "specs")
-    for path in sorted(glob.glob(os.path.join(specs_dir, "*.md"))):
-        if ".validation-" in os.path.basename(path):
+    # Legacy files and spec folders alike (framework ADR 0024): a folder is
+    # listed by its name, its status read from `spec.md`.
+    for ref in _spec_layout.iter_specs(specs_dir(project)):
+        entry = ref["folder"] or ref["spec_file"]
+        name = os.path.basename(entry)
+        if ".validation-" in name or not ref["status_file"]:
             continue
-        try:
-            with open(path, encoding="utf-8") as f:
-                head = f.read(500)
-        except Exception:
-            continue
+        head = _spec_layout.read_text(ref["status_file"])[:500]
         match = re.search(r"^status:\s*(.+)$", head, re.MULTILINE)
         status = match.group(1).strip() if match else ""
         if status and status not in ("implemented", "abandoned"):
-            pending.append(f"{os.path.basename(path)}: {status}")
+            pending.append(f"{name}: {status}")
 
     lines = []
     # A worktree session opens by naming its repo and spec branch (framework ADR 0022).

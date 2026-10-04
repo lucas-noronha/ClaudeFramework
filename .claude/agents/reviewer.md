@@ -128,6 +128,14 @@ feature-level questions, not per-task ones.
 
 Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
 
+**What you load** (framework ADR 0024): the coder's file list, the task's
+text, `spec.md`, and the reconciliation target your caller names:
+`reconciliation.md` (frontmatter `doc_type: spec-reconciliation`) in a spec
+folder, or the `## Reconciliation` section of a legacy single file. Write
+reconciliation lines only there, never into `spec.md`, `plan.md` or
+`tasks.md`; wherever this file says "the spec's `## Reconciliation`", it
+means that target.
+
 **Reconciliation, per-task scope only** (see
 framework ADR 0009). After deciding
 Approved/Returned, read this task's own line in the spec's "## Tasks"

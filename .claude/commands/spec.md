@@ -33,8 +33,10 @@ From the description in $ARGUMENTS:
 3. Fill in the business context and functional/non-functional
    requirements that are already clear from the description, **in
    {{LANGUAGE}}** — this is the file agents will reload repeatedly.
-   Frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`
-   and the reconciliation outcome phrases stay English.
+   Frontmatter keys, enumerated values, the file names `spec.md`,
+   `plan.md`, `tasks.md` and `reconciliation.md`,
+   `## Tasks`/`## Reconciliation` and the reconciliation outcome phrases
+   stay English.
    Also check the constitution, if present — if the
    requirement as described would need to violate a principle there,
    flag that explicitly as one of the "unclear, ask" items below rather
@@ -72,14 +74,28 @@ From the description in $ARGUMENTS:
    in step 2, or a constitution conflict flagged in step 3), list it as
    explicit questions at the end of your reply — don't invent a
    requirement.
-6. Save the canonical file at `docs/product/specs/NNNN-short-name.md`
-   (next available sequential number), starting with its own
-   frontmatter (`doc_type: spec`, `id: NNNN`, `status: draft`, the
-   `area`/`relates_to` from step 4, a `context_budget` estimate) — see
-   the fenced example in `requirements-template.md`, right after its
-   own divider, for the exact shape. Include an empty "## Reconciliation"
-   section per the template; `reviewer` populates it during
-   `/implement` — never fill it in here.
+6. Create the spec as a **folder** (framework ADR 0024, framework spec
+   0006): `docs/product/specs/NNNN-short-name/`. Take `NNNN` from the
+   resolver, which numbers across every layout (folders, lite folders and
+   legacy files):
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" next-number`.
+   Write exactly two files, with these English names in every setup
+   language:
+   - `spec.md` — the canonical requirements file, starting with its own
+     frontmatter (`doc_type: spec`, `id: NNNN`, `status: draft`, the
+     `area`/`relates_to` from step 4, a `context_budget` estimate) — see
+     the fenced example in `requirements-template.md`, right after its
+     own divider, for the exact shape. It holds the `#` title and the
+     requirement sections only, from "Feature name" to "Impact on
+     existing architecture" — no `## Reconciliation` here, no plan, no
+     tasks.
+   - `reconciliation.md` — empty: the minimal frontmatter
+     (`doc_type: spec-reconciliation`, `spec: NNNN`, `summary`,
+     `context_budget`; never `status`) and an empty `## Reconciliation`
+     heading. `reviewer` populates it during `/implement` — never fill
+     it in here.
+
+   Create nothing else (no `plan.md`, `tasks.md` or `README.md`).
 7. Do not implement anything at this stage. Do not invoke `coder`.
 
 End by reminding the user that the next step is validating the spec

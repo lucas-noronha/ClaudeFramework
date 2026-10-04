@@ -5,6 +5,7 @@ status: implemented
 area: living-docs
 relates_to: [0001]
 context_budget: ~2450 tokens
+tier: structural
 ---
 
 # Living architecture docs — census, routing frontmatter and verified ground truth
@@ -143,39 +144,3 @@ Framework maintainer; `cfw-coder`, `cfw-reviewer` and the update-docs command as
 - Touches `cfw-coder`, `cfw-reviewer`, `/implement`, `frontmatter_check.py` and the
   architecture templates.
 
-## Reconciliation
-
-Recorded after the fact: this spec was implemented directly on 2026-10-03, without `/plan` and `/tasks`; the sections below document what was actually done, so the pipeline's own bookkeeping holds.
-
-- [task 1] FR-01: matches spec
-- [task 1] FR-02: matches spec
-- [task 3] FR-03: matches spec — command steps are instructions; the ledger logic they rely on is tested
-- [task 3] FR-04: matches spec
-- [task 4] FR-05: matches spec — default keys resumo/naoResponde, configurable via routing_keys
-- [task 5] FR-06: matches spec
-- [task 5] FR-07: matches spec — the independent pass is reviewer's new doc-verification scope
-- [task 1] FR-08: matches spec — probe paths are git glob pathspecs (`**` crosses folders)
-- [task 5] FR-09: matches spec
-- [task 5] NFR-01: matches spec — stated as a rule; not mechanically checked
-- [task 1] NFR-02: matches spec — writes only under <docs root>/architecture/census/
-- [task 1] NFR-03: matches spec
-- [task 1] AC-01: matches spec — reproduced on a synthetic repo; the adopter's real .NET repos not run yet
-- [task 2] AC-02: matches spec — synthetic C# source
-- [task 1] AC-03: matches spec
-- [task 1] AC-04: matches spec
-- [task 5] AC-05: couldn't verify — agent instruction only; needs a real review over a draft doc
-- [task 4] AC-06: matches spec
-
-## Technical plan
-
-Recorded after the fact: this spec was implemented directly on 2026-10-03, without `/plan` and `/tasks`; the sections below document what was actually done, so the pipeline's own bookkeeping holds.
-
-**Tier:** structural. **ADR:** framework ADR 0019. Traceability per FR/AC: `CHANGELOG.md`.
-
-## Tasks
-
-- [x] 1. Census engine: integration-ref reads, drift, mentions, inline probes, ledger with watermark — Tests: FR-01, FR-02, FR-08, NFR-02, NFR-03, AC-01, AC-03, AC-04
-- [x] 2. `dotnet-layered` extractor, constants resolved for config keys — Tests: AC-02
-- [x] 3. `/update-docs` (sync and promote) and `/implement` step 8 — Tests: FR-03, FR-04
-- [x] 4. Routing frontmatter in templates, `frontmatter_check` and `claude_md_index_check` nudges — Tests: FR-05, AC-06
-- [x] 5. "Describing is not prescribing", `draft → active` lifecycle, stale-rule finding: workflow doc, `coder`, `reviewer` — Tests: FR-06, FR-07, FR-09, NFR-01, AC-05

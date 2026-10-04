@@ -1,6 +1,6 @@
 ---
 description: Triages complexity and produces the actual technical plan for a validated spec (architect + ADR for structural changes, a proportional plan for standard ones, nothing for trivial ones), plus a Definition of Done and Test plan numbered against the spec's own FR/AC items.
-argument-hint: path to the spec (docs/product/specs/NNNN-name.md)
+argument-hint: path to the spec (docs/product/specs/NNNN-name/ or NNNN-name.md)
 ---
 
 Before anything else in this command: apply the `project-registration`
@@ -8,7 +8,14 @@ skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
 actually live (registering the project first if it isn't yet), and in
 the common case costs one check and changes nothing.
 
-Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, the file names `spec.md`, `plan.md`, `tasks.md` and `reconciliation.md`, `## Tasks`/`## Reconciliation`, the reconciliation outcome phrases and `Approved`/`Returned` stay English.
+
+**Which layout the spec has** (framework ADR 0024): resolve $ARGUMENTS
+(a path, a folder or an `NNNN`) with
+`python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" resolve <arg>`.
+It reports `folder`, `lite` or `legacy`, and the file to read for the
+status. Below, "the spec" is `spec.md` of a folder, or the single file of
+a lite or legacy spec.
 
 **Prerequisite — the spec's `status`, settled here.** A technical plan is
 never written over an unvalidated or dead requirement, and approving is
@@ -26,8 +33,9 @@ has to remember to edit the frontmatter by hand:
   - **Abandon it** — set `status: abandoned` and stop.
 
   On approval, change only the canonical spec's frontmatter `status:
-  draft` → `status: approved` (one edit, nothing else in the file), say
-  so in one line, then continue with step 1.
+  draft` → `status: approved`, say so in one line, then continue with
+  step 1. Approval flips only `status`; the `tier:` line is added later,
+  in the same edit as the recorded result (see the end of this command).
 - **`abandoned`** → stop and warn. Don't resurrect a dropped feature
   silently. If the user wants it back, they set it to `draft` and run
   `/plan` again.
@@ -97,10 +105,26 @@ has to remember to edit the frontmatter by hand:
    from steps 3/4 can produce these alongside the rest of the plan;
    otherwise write them directly (absorbed fallback).
 
-Record the result at the bottom of the spec itself, in a "Technical
-plan" section: the complexity tier, the ADR reference (if any), and —
-for standard/structural — the plan, Definition of Done, and Test plan
-from steps 3/4/6 (trivial gets tier only, nothing else). `/tasks` reads
-this section next; it does no technical judgment of its own and
+Record the result by layout:
+
+- **Folder spec**: write `plan.md` next to `spec.md`, with the minimal
+  frontmatter (`doc_type: spec-plan`, `spec: NNNN`, `summary`,
+  `context_budget` estimated from the file's real size; never `status`) and, under a `# Technical plan`
+  title: the ADR reference (if any), the approach, the scope check, the
+  Definition of Done and the Test plan from steps 3/4/5/6. In the same
+  edit that applies the approval, set `tier: trivial | standard |
+  structural` in `spec.md`'s frontmatter — for every tier, and nothing
+  else in `spec.md` changes. A **trivial** spec gets the `tier` line and
+  no `plan.md`.
+- **Lite spec** (`lite: true`): it stays a single file even if `/plan`
+  runs on it — it already carries `tier: standard`. Write no `plan.md`;
+  if a plan is wanted, put it in that file's own sections.
+- **Legacy single-file spec**: keep today's layout (FR-15 of framework
+  spec 0006) — append the "## Technical plan" section at the bottom of
+  that same file (tier, ADR reference, and for standard/structural the
+  plan, Definition of Done and Test plan; trivial gets tier only). Create
+  no folder and never convert the spec.
+
+`/tasks` reads the plan next; it does no technical judgment of its own and
 invents no new test beyond this list, so whatever it needs to know
 belongs here.

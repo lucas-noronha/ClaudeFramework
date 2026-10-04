@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Edit({{PROJECTS_ROOT_PERMISSION_PATH}}/*/product/specs/*)"
+      "Edit({{PROJECTS_ROOT_PERMISSION_PATH}}/*/product/specs/*)",
+      "Edit({{PROJECTS_ROOT_PERMISSION_PATH}}/*/product/specs/*/*)"
     ]
   },
   "hooks": {

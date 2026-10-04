@@ -26,19 +26,21 @@ on its own — avoid it.
 
 | # | You type | What happens | When to move on |
 |---|---|---|---|
-| 1 | `/spec <short description of the idea>` | Generates a draft at `docs/product/specs/NNNN-*.md` | Whenever the spec doesn't exist yet |
+| 1 | `/spec <short description of the idea>` | Generates a draft folder `docs/product/specs/NNNN-*/` (`spec.md` + empty `reconciliation.md`) | Whenever the spec doesn't exist yet |
 | 2 | *(outside the chat)* Send the spec to your stakeholder | — | Nothing to edit: the next `/plan` asks whether to approve the spec and sets `status: approved` itself (or `abandoned` if the feature gets dropped) |
-| 3 | `/plan docs/product/specs/NNNN-*.md` | Triage classifies; trivial stops there, standard gets a short technical plan, structural gets `architect` (+ ADR if needed) plus the same plan | If an ADR was proposed, you approve it manually (`status: accepted`) before moving on |
-| 4 | `/tasks docs/product/specs/NNNN-*.md` | Mechanically breaks the plan into small, dependency-annotated tasks | Always |
-| 5 | `/implement docs/product/specs/NNNN-*.md` | First offers to isolate this spec in its own worktree (see below); then orchestrates every remaining task: dependency-ordered waves, one subagent per task, parallel within a wave, automatic `reviewer` pass per coder-tier task | Or `/implement <task number>` for just one task — see below |
+| 3 | `/plan docs/product/specs/NNNN-*/` | Triage classifies and records `tier` in `spec.md`; trivial stops there, standard gets a short technical plan in `plan.md`, structural gets `architect` (+ ADR if needed) plus the same plan | If an ADR was proposed, you approve it manually (`status: accepted`) before moving on |
+| 4 | `/tasks docs/product/specs/NNNN-*/` | Mechanically breaks the plan into `tasks.md`: small, dependency-annotated tasks, each carrying its own Test plan lines | Always |
+| 5 | `/implement docs/product/specs/NNNN-*/` | First offers to isolate this spec in its own worktree (see below); then orchestrates every remaining task: dependency-ordered waves, one subagent per task, parallel within a wave, automatic `reviewer` pass per coder-tier task | Or `/implement <task number>` for just one task — see below |
 | 6 | *(automatic)* Hook runs build + tests, per task | Deterministic gate, zero token cost | If it fails, that task's subagent gets the result back before the sweep continues |
 | 7 | `/review` | Reviewer does one final, whole-feature pass across the cumulative diff, plus the spec's Definition of Done and "## Reconciliation" completeness | Once every task is checked off — catches cross-task issues the per-task pass in step 5 can't see |
 | 8 | Merge (or push + PR, if this spec is in its own worktree — `/review` offers it on Approved) | — | After "Approved" from `/review` |
-| 9 *(later, optional)* | `/reconcile docs/product/specs/NNNN-*.md` | Re-checks an already-`implemented` spec against the codebase as it is *now* — no diff, no gate, just "does this still hold" | Any time you suspect drift, or on whatever cadence you like — see `governance-and-observability.md` |
+| 9 *(later, optional)* | `/reconcile docs/product/specs/NNNN-*/` | Re-checks an already-`implemented` spec against the codebase as it is *now* — no diff, no gate, just "does this still hold" | Any time you suspect drift, or on whatever cadence you like — see `governance-and-observability.md` |
+
+Specs written before framework spec 0006 are single files (`NNNN-*.md`) and keep working: every command reads and writes them in that same layout. `.claude/scripts/migrate_spec_folders.py` converts them to folders on request (dry run first); nothing converts a spec on its own.
 
 ## `/implement`: sweep the whole spec, or just one task
 
-`/implement docs/product/specs/NNNN-*.md` (a spec path) first checks
+`/implement docs/product/specs/NNNN-*/` (a spec path) first checks
 whether this spec already has its own worktree (branch
 `task/<short-name>`) and, if not, asks whether to create one before
 starting — worth it if you want to run other specs' sweeps at the same
@@ -76,8 +78,8 @@ If the change doesn't deserve a spec, describe it instead:
 (framework ADR 0020):
 
 - **trivial** → `quickfix` fixes it directly; the build/test gate runs;
-  no spec file, no review. You get the tier and the gate result back.
-- **standard** → it offers a *lite spec*: one file with FRs, ACs and the
+  no spec, no review. You get the tier and the gate result back.
+- **standard** → it offers a *lite spec* (`NNNN-quick-<name>/spec.md`): one file with FRs, ACs and the
   task list, which you approve on the spot, then `/implement` runs it.
   `/plan` is skipped unless you ask for it.
 - **structural** → it stops and points you at the full `/spec` →

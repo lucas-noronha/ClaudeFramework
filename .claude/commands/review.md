@@ -20,6 +20,16 @@ framework ADR 0009), or any time you
 need to review hand-edited code that never went through `/implement`
 at all.
 
+Resolve the spec first (framework ADR 0024), in either layout:
+`python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_spec_layout.py" resolve <path|folder|NNNN>`
+(an absolute path, a folder name or `NNNN` — a relative path resolves
+against the current directory).
+Hand `reviewer` the spec's `spec.md` (requirements), its `plan.md` (the
+Definition of Done) and the reconciliation target (`reconciliation.md`);
+in the legacy and lite layouts all three are the one file, with its
+"## Reconciliation" section as the target. The branch short name the
+resolver returns is the `<spec-short-name>` used below.
+
 Confirm the build/lint/test hook passed on the current changes (see
 the result of the last `/implement` call). If it didn't, stop and
 return to `coder` — don't call `reviewer` over code that doesn't even

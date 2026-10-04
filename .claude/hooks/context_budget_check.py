@@ -4,6 +4,10 @@ framework's "don't let a doc bloat, split it" discipline from a prose
 reminder into a mechanical check, at zero token cost — no tokenizer
 dependency, just a rough chars-per-token heuristic, so it's a nudge to
 go look, not an authoritative token count.
+
+Every `.md` under docs/ is judged on its own `context_budget`, which includes
+each file of a spec folder (spec.md, plan.md, tasks.md, notes): a folder spec
+is split precisely so each file stays small (framework ADR 0024 section 5).
 """
 import json
 import os

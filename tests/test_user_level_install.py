@@ -307,7 +307,7 @@ class TestMigration(TempCase):
         self.assertEqual(before, self.snapshot(src))
         self.assertTrue(os.path.isfile(os.path.join(dest, "decisions", "0003-bus.md")))
         self.assertTrue(os.path.isfile(os.path.join(dest, "decisions", "0004-outro.md")))
-        self.assertTrue(os.path.isfile(os.path.join(dest, "product", "specs", "0001-checkout.md")))
+        self.assertTrue(os.path.isfile(os.path.join(dest, "product", "specs", "0001-checkout", "spec.md")))
         orders = self.read(os.path.join(dest, "architecture", "orders.md"))
         self.assertIn("title: Orders", orders)
         self.assertIn("(../decisions/0003-bus.md)", orders)

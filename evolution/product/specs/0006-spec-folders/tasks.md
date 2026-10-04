@@ -1,0 +1,26 @@
+---
+doc_type: spec-tasks
+spec: 0006
+summary: The ordered task list, one checkbox per task.
+context_budget: ~1350 tokens
+---
+
+## Tasks
+
+Layers are framework layers: **hooks/scripts** (Python, tested) and **commands/docs** (prose read
+by agents). No task touches sensitive data or a new table. `_spec_layout.py` is written only by
+task 1; every other task imports it read-only. Every task follows framework ADR 0024.
+
+- [x] 1. **Layout resolver** — hooks/scripts: new `.claude/hooks/_spec_layout.py` (`classify()` for legacy file / folder file with role / lite folder via `lite: true`, deeper paths ignored, id from frontmatter or `NNNN` prefix, CRLF-safe parsing; the branch short name from a folder or legacy name, keeping `quick-`; CLI `resolve <path|folder|NNNN>` and `next-number`); `_project_paths.specs_dir()`. New test file. — Depends on: none — Tests: S01, S02, S10
+- [x] 2. **Status flip and index** — hooks/scripts: `spec_status_sync.py` reacts to `tasks.md`/`spec.md` (or the single file for lite/legacy), writes only the `status:` line of `spec.md`'s frontmatter, byte-preserving; indented plain sub-bullets never count as boxes; `spec_index.py` gains `rebuild()` (called by the flip), one row per spec titled from `spec.md`, silent when a flip is due. — Depends on: 1 — Tests: S03, S04, S05, S07
+- [x] 3. **Number guard** — hooks/scripts: `spec_number_guard.py` denies a collision with a folder, lite folder, legacy file or half-migrated spec. — Depends on: 1 — Tests: S06
+- [x] 4. **Frontmatter and budget hooks** — hooks/scripts: `frontmatter_check.py` (companion files need `doc_type`, `spec`, `summary`, `context_budget`, never `status`; `spec-note` extras with `summary` accepted; `tier:` known) and `context_budget_check.py` (every file in a folder). — Depends on: 1 — Tests: S08
+- [x] 5. **Metrics and session brief** — hooks/scripts: `pipeline_metrics.py` reads the reconciliation target in both layouts and the verdict spec-id regex matches both path shapes; `session_brief.py` lists folders by name. — Depends on: 1 — Tests: S09
+- [x] 6. **Authoring commands** — commands/docs: `/spec` creates the folder (`spec.md` + empty `reconciliation.md`); `/plan` writes `plan.md` and `tier:` in `spec.md` (trivial: no `plan.md`; lite stays single-file); `/tasks` writes `tasks.md` with indented plain sub-bullets (its Test plan lines, plus the approach excerpt for structural tasks); `/quick` writes `NNNN-quick-<short-name>/spec.md` with `lite: true`; legacy specs keep their layout; `docs/product/requirements-template.md` gains the file skeletons. — Depends on: none (uses only task 1's CLI contract; dispatched in parallel with it) — Tests: none (prose; checked by `reviewer`)
+- [x] 7. **Execution commands** — commands/docs: `/implement` (each `coder`/`quickfix` gets its task text + the `spec.md` path; `reviewer` gets the file list + the reconciliation target; look the spec up by id before each checkbox write; branch from the folder name), `/review`, `/reconcile`, `/worktree` resolve both layouts via `_spec_layout.py resolve`. — Depends on: none (uses only task 1's CLI contract; dispatched in parallel with it) — Tests: none (prose; checked by `reviewer`)
+- [x] 8. **Agents** — commands/docs: `coder`, `quickfix`, `reviewer`, `architect` state what they load per FR-08 (task text + `spec.md`; `plan.md` only when the task text is insufficient; never `tasks.md` whole or `reconciliation.md` for coder/quickfix; reviewer writes only the reconciliation target). — Depends on: 6, 7 — Tests: none (prose; checked by `reviewer`)
+- [x] 9. **Migration script** — hooks/scripts: new `.claude/scripts/migrate_spec_folders.py` per ADR 0024 §8 (dry run default; split on English headings or `--plan-heading`; plan subsections up one level; staged, lossless line check, rename, then delete; refuses existing target / both layouts; skips migrated; reports breaking links; rebuilds the index; warns about mode A specs in flight). — Depends on: 1, 2 — Tests: S11, S12
+- [x] 10. **Imported specs as folders** — hooks/scripts: `migrate_context.py` reuses the splitter so imported specs land as folders. — Depends on: 9 — Tests: S13
+- [x] 11. **Shipped config and translation names** — hooks/scripts plus settings templates: `*/*` permission and `**` `if` filters in both settings templates; the translation check treats `spec.md`/`plan.md`/`tasks.md`/`reconciliation.md` as fixed English words. — Depends on: none (uses only task 1's CLI contract; dispatched in parallel with it) — Tests: S14, S15
+- [x] 12. **Docs** — commands/docs: `.claude/README.md` (resolver, migration script, hook behaviour), the workflow docs that describe the spec file (feature-development-guide, parallel-work, ai-first-development as relevant), `CHANGELOG.md` entry citing framework spec 0006 / framework ADR 0024 with an upgrade note (both layouts supported; optional migration). — Depends on: 8, 10, 11 — Tests: none
+- [x] 13. **Migrate the framework's own specs** — hooks/scripts plus `evolution/`: run `migrate_spec_folders.py` on `evolution/product/specs/` 0001–0006 (dry run, review, apply), rebuild the index, run the suite; add the context-budget measurement test on migrated spec 0004. This spec's own last checkbox then lives in its new `tasks.md`. — Depends on: 2, 3, 4, 5, 9, 12 — Tests: S16
