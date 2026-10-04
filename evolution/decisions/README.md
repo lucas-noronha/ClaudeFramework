@@ -30,3 +30,4 @@ format.
 | 0020 | [A fast lane, cheaper gates and a per-project review policy](0020-proportional-pipeline-cost.md) | accepted | — | — |
 | 0021 | [The framework's own specs and ADRs live in `evolution/`, outside the shipped skeleton](0021-separate-evolution-from-skeleton.md) | accepted | — | — |
 | 0022 | [A linked worktree is its main checkout's project, with per-checkout state](0022-worktree-sessions.md) | accepted | — | — |
+| 0023 | [One language per setup, translated by the model before any deterministic rewrite and tracked by source hash](0023-setup-language.md) | accepted | — | — |
