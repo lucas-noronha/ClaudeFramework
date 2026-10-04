@@ -32,3 +32,4 @@ format.
 | 0022 | [A linked worktree is its main checkout's project, with per-checkout state](0022-worktree-sessions.md) | accepted | — | — |
 | 0023 | [One language per setup, translated by the model before any deterministic rewrite and tracked by source hash](0023-setup-language.md) | accepted | — | — |
 | 0024 | [A spec is a folder of single-owner files, addressed through one shared layout resolver](0024-spec-folders.md) | accepted | — | — |
+| 0025 | [Parallel waves share one tree safely: subagent lifecycle events, a blocking gate, a subagent git guard and one reconciliation writer](0025-safe-parallel-orchestration.md) | accepted | — | — |
