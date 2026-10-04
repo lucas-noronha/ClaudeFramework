@@ -2,9 +2,9 @@
 
 # Product specs — index
 
-One line per spec, grouped by area (see `../../decisions/0008-spec-area-lineage.md`). Open the
+One line per spec, grouped by area (see framework ADR 0008). Open the
 file only if the summary here doesn't already answer your question —
-see `../requirements-template.md` for the format. `/spec` reads this table to infer a
+see `../../../docs/product/requirements-template.md` for the format. `/spec` reads this table to infer a
 new spec's own `area`/`relates_to` automatically.
 
 | ID | Title | Area | Status | Related to |

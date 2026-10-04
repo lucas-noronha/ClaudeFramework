@@ -17,7 +17,7 @@ HANDOFF_CHAR_LIMIT = 800  # bound the cost of a stale/verbose last_assistant_mes
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return
@@ -26,7 +26,7 @@ def main() -> None:
 
     # git status is about the *code* repo, so it stays on CLAUDE_PROJECT_DIR;
     # the handoff note and the specs are project content, which lives in
-    # the resolved subtree once this session is registered (ADR 0013).
+    # the resolved subtree once this session is registered (framework ADR 0013).
     try:
         result = subprocess.run(
             ["git", "status", "--short"],

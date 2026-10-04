@@ -6,7 +6,7 @@ repository root's `README.md` instead — this one assumes you've
 already read that and want to understand (or modify) the pipeline
 itself.
 
-The short version, from `docs/decisions/0001-tooling-agents-commands-skills.md`:
+The short version, from framework ADR 0001:
 **subagents** are pipeline roles, **commands** are the pipeline's
 deterministic entry points, **skills** are knowledge that applies at
 any stage, **hooks** are deterministic checks that cost zero tokens.
@@ -14,14 +14,14 @@ Four different primitives because conflating them (e.g. using a Skill
 for sequencing) makes the pipeline depend on probabilistic text
 matching for something that should be exact.
 
-One more file sits above all four: the constitution — since ADR 0018
+One more file sits above all four: the constitution — since framework ADR 0018
 two files at the docs root, `../docs/constitution-baseline.md`
 (framework-owned Principles I–V, replaced on every upgrade) and
 `../docs/constitution.md` (ADR
 0007) — non-negotiable, versioned principles `/spec`, `/plan`,
 `coder`/`quickfix`, and `reviewer` all check against, amended under its
 own Governance section rather than edited silently. In the
-multi-project modes it becomes two layers (ADR 0015): the shared root's
+multi-project modes it becomes two layers (framework ADR 0015): the shared root's
 `docs/constitution.md` is the supreme **floor** binding every project,
 and a project's own `docs/<name>/constitution.md` may only **add** to
 it — never weaken or contradict it. That file is optional and
@@ -38,12 +38,12 @@ it.
 
 | File | Role | Called by |
 |---|---|---|
-| `triage.md` | Classifies a task's (or a free-text request's) size (trivial/standard/structural) in one sentence, implements nothing | `/plan`, `/implement`, `/quick` (ADR 0020) |
+| `triage.md` | Classifies a task's (or a free-text request's) size (trivial/standard/structural) in one sentence, implements nothing | `/plan`, `/implement`, `/quick` (framework ADR 0020) |
 | `architect.md` | Assesses structural impact, drafts an ADR if one is needed, never writes implementation code | `/plan` (structural tier), `/adr` |
 | `researcher.md` | Answers one pointed external/domain question, returns a conclusion not raw research | `architect`, `coder`, on demand |
 | `coder.md` | Implements standard/structural tasks with tests, following the architecture docs and skills relevant to what it's touching | `/implement` (standard/structural tier, single-task or orchestration mode) |
 | `quickfix.md` | `coder`'s cheaper sibling for genuinely trivial, single-file fixes | `/implement` (trivial tier) |
-| `reviewer.md` | One review pass against an explicit checklist (including the spec's Test plan coverage; the Definition of Done and "## Reconciliation" completeness too, when the scope is the whole feature), after the build/test hook is already green. Per-task scope also appends reconciliation entries to the spec's own "## Reconciliation" section for that task's `FR-NN`/`AC-NN` tags (ADR 0009) — the only agent with `Edit` access beyond `coder`/`quickfix`. Invokes the `security-review` skill for a security-sensitive diff, folding a finding into a named Core Principle when `docs/constitution.md` exists (ADR 0010). A third **sweep scope**, called only from `/reconcile`, audits an already-`implemented` spec against current code state — no diff, no gate, appends a dated sweep block instead of an Approved/Returned verdict (ADR 0012). A fourth **doc-verification scope**, called only from `/update-docs promote`, independently checks a `draft` architecture doc's rules against code (ADR 0019). Treats `draft` architecture rules as advisory, `active` ones as binding, and flags "rule may be stale" separately | `/review` (whole-feature diff); also fired automatically inside `/implement`'s orchestration mode, scoped to one task's own files (see ADR 0004); `/reconcile` (sweep scope) |
+| `reviewer.md` | One review pass against an explicit checklist (including the spec's Test plan coverage; the Definition of Done and "## Reconciliation" completeness too, when the scope is the whole feature), after the build/test hook is already green. Per-task scope also appends reconciliation entries to the spec's own "## Reconciliation" section for that task's `FR-NN`/`AC-NN` tags (framework ADR 0009) — the only agent with `Edit` access beyond `coder`/`quickfix`. Invokes the `security-review` skill for a security-sensitive diff, folding a finding into a named Core Principle when `docs/constitution.md` exists (framework ADR 0010). A third **sweep scope**, called only from `/reconcile`, audits an already-`implemented` spec against current code state — no diff, no gate, appends a dated sweep block instead of an Approved/Returned verdict (framework ADR 0012). A fourth **doc-verification scope**, called only from `/update-docs promote`, independently checks a `draft` architecture doc's rules against code (framework ADR 0019). Treats `draft` architecture rules as advisory, `active` ones as binding, and flags "rule may be stale" separately | `/review` (whole-feature diff); also fired automatically inside `/implement`'s orchestration mode, scoped to one task's own files (see framework ADR 0004); `/reconcile` (sweep scope) |
 
 ## commands/ — the pipeline's deterministic entry points
 
@@ -53,18 +53,18 @@ which stage it's in.
 
 | File | Command | What it does |
 |---|---|---|
-| `spec.md` | `/spec` | Formalizes an idea into a spec file (+ stakeholder-language companion, if configured) from the requirements template. Wraps `superpowers:brainstorming` first, when enabled (see ADR 0003), and always checks the described solution actually follows from the underlying business problem before formalizing it — flagging a mismatch as an "unclear, ask" item instead of silently proceeding. Also auto-assigns the spec's own `area`/`relates_to` lineage from the existing spec index (ADR 0008, never asked of the human) and checks the request against `docs/constitution.md`, if present |
-| `plan.md` | `/plan` | Triages complexity; trivial stops there, standard writes a short technical plan + Definition of Done + Test plan (numbered against the spec's `FR-NN`/`AC-NN`), structural adds `architect` (+ ADR) plus the same three artifacts and an explicit scope-creep check (see ADR 0004). Wraps `superpowers:writing-plans` for standard/structural, when enabled |
-| `tasks.md` | `/tasks` | Mechanically breaks the technical plan into small, dependency-annotated (`Depends on:` per task) `/implement`-sized tasks, distributing the Test plan's entries one-to-one across them (`Tests:` per task) — no technical judgment happens here (ADR 0004) |
-| `implement.md` | `/implement` | Single-task mode: routes one task to `quickfix`/`coder`. Orchestration mode (spec path instead of a task): first checks/offers a spec-scoped worktree (ADR 0005), then dispatches dependency-ready waves in parallel, one isolated subagent per task (never a worktree per task — isolation stops at the spec), auto-`reviewer` per coder-tier task before checking it off (ADR 0004). Wraps `superpowers:dispatching-parallel-agents`/`subagent-driven-development`/`executing-plans` in orchestration mode, when enabled |
-| `review.md` | `/review` | Final, whole-feature pass: runs `reviewer` against the cumulative diff plus the spec's Definition of Done, once the build/test hook is green — complements `/implement`'s per-task pass, doesn't replace it. On Approved, offers to push + open a PR if the spec is in its own worktree (ADR 0005). Wraps `superpowers:requesting-code-review`/`finishing-a-development-branch`, when enabled |
-| `worktree.md` | `/worktree` | Creates an isolated git worktree for a whole spec from a known-clean remote branch (branch name must match the spec's own short-name — `/implement` looks it up by that name, see ADR 0005), so several specs can run `/implement` at the same time, each in its own session. Names `superpowers:using-git-worktrees` as the same discipline, when enabled, without replacing its own origin-pinned steps |
+| `spec.md` | `/spec` | Formalizes an idea into a spec file (+ stakeholder-language companion, if configured) from the requirements template. Wraps `superpowers:brainstorming` first, when enabled (see framework ADR 0003), and always checks the described solution actually follows from the underlying business problem before formalizing it — flagging a mismatch as an "unclear, ask" item instead of silently proceeding. Also auto-assigns the spec's own `area`/`relates_to` lineage from the existing spec index (framework ADR 0008, never asked of the human) and checks the request against `docs/constitution.md`, if present |
+| `plan.md` | `/plan` | Triages complexity; trivial stops there, standard writes a short technical plan + Definition of Done + Test plan (numbered against the spec's `FR-NN`/`AC-NN`), structural adds `architect` (+ ADR) plus the same three artifacts and an explicit scope-creep check (see framework ADR 0004). Wraps `superpowers:writing-plans` for standard/structural, when enabled |
+| `tasks.md` | `/tasks` | Mechanically breaks the technical plan into small, dependency-annotated (`Depends on:` per task) `/implement`-sized tasks, distributing the Test plan's entries one-to-one across them (`Tests:` per task) — no technical judgment happens here (framework ADR 0004) |
+| `implement.md` | `/implement` | Single-task mode: routes one task to `quickfix`/`coder`. Orchestration mode (spec path instead of a task): first checks/offers a spec-scoped worktree (framework ADR 0005), then dispatches dependency-ready waves in parallel, one isolated subagent per task (never a worktree per task — isolation stops at the spec), auto-`reviewer` per coder-tier task before checking it off (framework ADR 0004). Wraps `superpowers:dispatching-parallel-agents`/`subagent-driven-development`/`executing-plans` in orchestration mode, when enabled |
+| `review.md` | `/review` | Final, whole-feature pass: runs `reviewer` against the cumulative diff plus the spec's Definition of Done, once the build/test hook is green — complements `/implement`'s per-task pass, doesn't replace it. On Approved, offers to push + open a PR if the spec is in its own worktree (framework ADR 0005). Wraps `superpowers:requesting-code-review`/`finishing-a-development-branch`, when enabled |
+| `worktree.md` | `/worktree` | Creates an isolated git worktree for a whole spec from a known-clean remote branch (branch name must match the spec's own short-name — `/implement` looks it up by that name, see framework ADR 0005), so several specs can run `/implement` at the same time, each in its own session. Names `superpowers:using-git-worktrees` as the same discipline, when enabled, without replacing its own origin-pinned steps |
 | `adr.md` | `/adr` | Records a decision directly via `architect`, for something with no spec/task attached |
-| `quick.md` | `/quick` | Fast lane (ADR 0020): triages a free-text request with no spec. Trivial → `quickfix` + build/test gate, no spec, no review; standard → a one-file lite spec, then `/implement`; structural → the full `/spec` → `/plan` path. Only ceremony shrinks — constitution, gate and scope rules are unchanged |
-| `update-docs.md` | `/update-docs` | For census-enabled projects (ADR 0019): freshness → census → drift → commits since the watermark (pending entries first) → findings → watermark, which advances only when every commit is handled. `promote <doc>` runs the independent `draft` → `active` verification |
-| `metrics.md` | `/metrics` | Per-feature cost from the event log — subagents, gate runs/failures, reviewer verdicts, rework — fast lane vs. full path side by side (ADR 0020) |
-| `reconcile.md` | `/reconcile` | On-demand spec-vs-code fidelity sweep for a spec already `implemented` — no file list, no diff, no build/test gate prerequisite. Delegates to `reviewer`'s sweep scope, which judges current code state against the spec's `FR-NN`/`AC-NN` and appends a dated `### Sweep` block to "## Reconciliation" (ADR 0012). Closes the gap ADR 0009 explicitly left open: post-implementation drift, not just drift during the original `/implement` sweep |
-| `setup-framework.md` | `/setup-framework` | Single entry point for adopting/maintaining this framework. **Opens with one mutually exclusive adoption-mode question (ADR 0014)** — a whole-repo commitment that's expensive to undo, so it explains each option's real trade-offs rather than listing labels, and detects an already-adopted mode to offer as the default. **(A) Direct in-repo** → Domains 1-4, unchanged. **(B) External AI-repo** → Domain 5. **(C) User-level, multi-project** → Domain 6. Domain 2 is the exception to that routing: plugins are per machine, so it's offered in any mode. Domain 1: detects+asks to resolve every `{{PLACEHOLDER}}` and renames the template/example files that are ready (`CLAUDE.md.template`, `settings.example.json`, `auto_format.py.example`, `overview.md.template`, `glossary.md.template`). Domain 2: checks globally enabled plugins against `docs/workflow/plugin-integrations.md`'s Core list, installs missing ones only with explicit confirmation. Domain 3: merges `.mcp.json.example`/`.gitignore.framework-additions` into this repo's real `.mcp.json`/`.gitignore` — creates either if missing, only adds what's not already there if not, never overwrites existing content — then deletes the now-redundant source files. Domain 4 (optional): asks to draft `docs/architecture/module-structure.md`/`frontend.md` from patterns detected in an existing codebase — always a clearly-marked draft, never silently finalized (ADR 0006). Domain 5 (mode B): runs from this repo (already fully set up) and links a *separate* target code repo to it via never-committed relative symlinks/junctions/hard links at `<target>/.claude` → the one shared `.claude/`, `<target>/docs` → the AI-repo's **shared `docs/` root**, and `<target>/CLAUDE.md` → `docs/<name>/CLAUDE.md` (the same conventional paths Domain 1 would otherwise copy files to, so every hook/agent/command keeps working unmodified), plus a bootstrap `CLAUDE.md` note at the *lowest common ancestor* of the two repos — any shared ancestor works, so the target repo can sit at any depth inside someone else's monorepo — that tells any session in the target repo to stop and demand this setup if the links are missing. Per ADR 0013 it *always* uses the per-project-subtree mechanism (one project is just N=1 — there's no single-vs-multi question), and per ADR 0015 that subtree is `docs/<name>/` **inside** the shared `docs/` tree, not a separate `projects/` folder — which is why the `docs` link points at the root (keeping `docs/workflow/*`, `docs/constitution.md`, `docs/glossary.md` and the `product/` templates reachable) while project content is reached by resolved absolute path instead. It also reserves `workflow`/`product`/`architecture`/`decisions`/`glossary` as project names, since those collide with the shared root's own folders. It writes two config files with different lifecycles: the gitignored per-machine `.claude/projects.local.json` (routing: this machine's `CLAUDE_PROJECT_DIR` → that project's subtree; `projects_root` now defaults to `<ai-repo>/docs`) and the committed `docs/<name>/project-config.json` (build/test command + language values, never overwritten without asking). Zero Claude-related footprint inside the target repo itself. Domain 6 (mode C): runs `scripts/install_user_level.py` from this repository (ADR 0017) — dry run, confirm, `--apply`. Agents/commands/skills are installed under a namespace prefix (`cfw-coder`, `/cfw-spec`), everything else under `~/.claude/<prefix>/` (hooks, scripts, registry, `framework.json`, the shared `docs/` root with this framework's reference ADRs), every cross-reference rewritten, `settings.json` merged additively with absolute hook paths, a manifest recorded for `uninstall.py`. Collisions and hand-edited installed files abort the run. Optionally registers several repos in one pass and imports an existing doc base. Registration otherwise stays lazy (ADR 0014). New setup domains get added here, not as new top-level commands. |
+| `quick.md` | `/quick` | Fast lane (framework ADR 0020): triages a free-text request with no spec. Trivial → `quickfix` + build/test gate, no spec, no review; standard → a one-file lite spec, then `/implement`; structural → the full `/spec` → `/plan` path. Only ceremony shrinks — constitution, gate and scope rules are unchanged |
+| `update-docs.md` | `/update-docs` | For census-enabled projects (framework ADR 0019): freshness → census → drift → commits since the watermark (pending entries first) → findings → watermark, which advances only when every commit is handled. `promote <doc>` runs the independent `draft` → `active` verification |
+| `metrics.md` | `/metrics` | Per-feature cost from the event log — subagents, gate runs/failures, reviewer verdicts, rework — fast lane vs. full path side by side (framework ADR 0020) |
+| `reconcile.md` | `/reconcile` | On-demand spec-vs-code fidelity sweep for a spec already `implemented` — no file list, no diff, no build/test gate prerequisite. Delegates to `reviewer`'s sweep scope, which judges current code state against the spec's `FR-NN`/`AC-NN` and appends a dated `### Sweep` block to "## Reconciliation" (framework ADR 0012). Closes the gap framework ADR 0009 explicitly left open: post-implementation drift, not just drift during the original `/implement` sweep |
+| `setup-framework.md` | `/setup-framework` | Single entry point for adopting/maintaining this framework. **Opens with one mutually exclusive adoption-mode question (framework ADR 0014)** — a whole-repo commitment that's expensive to undo, so it explains each option's real trade-offs rather than listing labels, and detects an already-adopted mode to offer as the default. **(A) Direct in-repo** → Domains 1-4, unchanged. **(B) External AI-repo** → Domain 5. **(C) User-level, multi-project** → Domain 6. Domain 2 is the exception to that routing: plugins are per machine, so it's offered in any mode. Domain 1: detects+asks to resolve every `{{PLACEHOLDER}}` and renames the template/example files that are ready (`CLAUDE.md.template`, `settings.example.json`, `auto_format.py.example`, `overview.md.template`, `glossary.md.template`). Domain 2: checks globally enabled plugins against `docs/workflow/plugin-integrations.md`'s Core list, installs missing ones only with explicit confirmation. Domain 3: merges `.mcp.json.example`/`.gitignore.framework-additions` into this repo's real `.mcp.json`/`.gitignore` — creates either if missing, only adds what's not already there if not, never overwrites existing content — then deletes the now-redundant source files. Domain 4 (optional): asks to draft `docs/architecture/module-structure.md`/`frontend.md` from patterns detected in an existing codebase — always a clearly-marked draft, never silently finalized (framework ADR 0006). Domain 5 (mode B): runs from this repo (already fully set up) and links a *separate* target code repo to it via never-committed relative symlinks/junctions/hard links at `<target>/.claude` → the one shared `.claude/`, `<target>/docs` → the AI-repo's **shared `docs/` root**, and `<target>/CLAUDE.md` → `docs/<name>/CLAUDE.md` (the same conventional paths Domain 1 would otherwise copy files to, so every hook/agent/command keeps working unmodified), plus a bootstrap `CLAUDE.md` note at the *lowest common ancestor* of the two repos — any shared ancestor works, so the target repo can sit at any depth inside someone else's monorepo — that tells any session in the target repo to stop and demand this setup if the links are missing. Per framework ADR 0013 it *always* uses the per-project-subtree mechanism (one project is just N=1 — there's no single-vs-multi question), and per framework ADR 0015 that subtree is `docs/<name>/` **inside** the shared `docs/` tree, not a separate `projects/` folder — which is why the `docs` link points at the root (keeping `docs/workflow/*`, `docs/constitution.md`, `docs/glossary.md` and the `product/` templates reachable) while project content is reached by resolved absolute path instead. It also reserves `workflow`/`product`/`architecture`/`decisions`/`glossary` as project names, since those collide with the shared root's own folders. It writes two config files with different lifecycles: the gitignored per-machine `.claude/projects.local.json` (routing: this machine's `CLAUDE_PROJECT_DIR` → that project's subtree; `projects_root` now defaults to `<ai-repo>/docs`) and the committed `docs/<name>/project-config.json` (build/test command + language values, never overwritten without asking). Zero Claude-related footprint inside the target repo itself. Domain 6 (mode C): runs `scripts/install_user_level.py` from this repository (framework ADR 0017) — dry run, confirm, `--apply`. Agents/commands/skills are installed under a namespace prefix (`cfw-coder`, `/cfw-spec`), everything else under `~/.claude/<prefix>/` (hooks, scripts, registry, `framework.json`, the shared `docs/` root — never the framework's own `evolution/` specs and ADRs), every cross-reference rewritten, `settings.json` merged additively with absolute hook paths, a manifest recorded for `uninstall.py`. Collisions and hand-edited installed files abort the run. Optionally registers several repos in one pass and imports an existing doc base. Registration otherwise stays lazy (framework ADR 0014). New setup domains get added here, not as new top-level commands. |
 
 ## skills/ — knowledge that applies at any stage
 
@@ -77,7 +77,7 @@ new knowledge belongs here or inside a command/agent body.
 |---|---|---|
 | `adr-writing/SKILL.md` | The fixed ADR format + immutability rule | Fully generic, use as-is |
 | `skill-authoring/SKILL.md` | How to decide Skill vs. command vs. agent body, and how to structure a new Skill | Fully generic, use as-is |
-| `plugin-awareness/SKILL.md` | Discipline absorbed from this machine's Core plugins (works even if they're not installed) + how to suggest an Optional plugin/MCP without installing it. Per ADR 0003, the `superpowers` discipline listed here now spans `/spec`, `/plan`, `coder`/`quickfix`, `/implement`, `/review`, and `/worktree`, not just `coder` (`/tasks` stays out of it — ADR 0004 makes it purely mechanical) | Generic mechanism, but its worked-example plugin list (`docs/workflow/plugin-integrations.md`) reflects one machine's install — edit that table for yours |
+| `plugin-awareness/SKILL.md` | Discipline absorbed from this machine's Core plugins (works even if they're not installed) + how to suggest an Optional plugin/MCP without installing it. Per framework ADR 0003, the `superpowers` discipline listed here now spans `/spec`, `/plan`, `coder`/`quickfix`, `/implement`, `/review`, and `/worktree`, not just `coder` (`/tasks` stays out of it — framework ADR 0004 makes it purely mechanical) | Generic mechanism, but its worked-example plugin list (`docs/workflow/plugin-integrations.md`) reflects one machine's install — edit that table for yours |
 
 This framework deliberately carries no example domain/architecture
 skill — a tenant-isolation checklist, a module-scaffolding pattern, a
@@ -117,20 +117,20 @@ decision (e.g. block an edit) — no LLM call involved. Wired up in
 | `adr_backlink.py` | `PostToolUse` (Write) | When a new ADR declares `supersedes: NNNN`, sets the old ADR's `superseded_by` automatically |
 | `decision_index.py` | `PostToolUse` (Write/Edit) | Rebuilds `docs/decisions/README.md` — a one-line-per-ADR index (id, title, status, supersedes) — so an agent can see what decisions exist without opening or globbing every file |
 | `spec_index.py` | `PostToolUse` (Write/Edit) | Same idea, for `docs/product/specs/README.md` |
-| `spec_status_sync.py` | `PostToolUse` (Edit) | Flips a spec's `status` to `implemented` automatically once every checkbox in its `## Tasks` section is checked — only from `approved`, never from `draft` or `abandoned`. Also logs a `spec_implemented` pipeline-metrics event (ADR 0011) at the moment it flips |
+| `spec_status_sync.py` | `PostToolUse` (Edit) | Flips a spec's `status` to `implemented` automatically once every checkbox in its `## Tasks` section is checked — only from `approved`, never from `draft` or `abandoned`. Also logs a `spec_implemented` pipeline-metrics event (framework ADR 0011) at the moment it flips |
 | `skill_index.py` | `PostToolUse` (Write/Edit) | Rebuilds `.claude/skills/README.md` — a one-line-per-skill index (name, `applies_to` agents, description) — from each `SKILL.md`'s own frontmatter |
 | `context_budget_check.py` | `PostToolUse` (Edit/Write) | Warns (never blocks) when a doc under `docs/` is more than 2x past its own frontmatter's `context_budget` estimate — a rough chars/4 heuristic, no tokenizer dependency |
 | `frontmatter_check.py` | `PostToolUse` (Edit/Write) | Warns (never blocks) when a doc under `docs/` is missing `doc_type`/`status`/`context_budget` — the fields the rest of this framework's tooling depends on |
 | `claude_md_index_check.py` | `PostToolUse` (Edit/Write) | Warns (never rewrites) when `CLAUDE.md`'s own "Index" table quotes a different `~Cost` than the doc it points at now declares in its own frontmatter — see the note below on why this one only nudges |
-| `constitution_amendment_check.py` | `PostToolUse` (Edit/Write, constitution files only) | Warns (never blocks) when a constitution changed since the last commit without its `version`/`last_amended` frontmatter moving too — compares against the file's own committed path via `git show HEAD:<path>`, fails open if git isn't available (ADR 0007). Since ADR 0015 it watches **both** layers independently: the shared `docs/constitution.md` and a project's own `docs/<name>/constitution.md`. "The project one never weakens the supreme one" stays a semantic judgment `reviewer`/`coder` make while reading both — deliberately not a syntactic check |
-| `secret_leak_guard.py` | `PreToolUse` (Edit/Write, repo-wide) | Blocks a write whose new content matches a high-confidence credential pattern (AWS key ID, GitHub/Slack token, a private-key block) — stdlib regex, no scanner dependency, active by default. Never reads `docs/constitution.md`; works the same with or without it (ADR 0010) |
-| `validation_sync_check.py` | `PostToolUse` (Edit/Write) | Decides deterministically whether an approved spec's stakeholder-language companion needs re-syncing (language split? approved? requirements hash changed since the companion's `source_hash`?) and only then hands the session an exact instruction with absolute paths. Replaced the always-on Sonnet `agent` hook (ADR 0020) |
-| `project_tools.py` | `PostToolUse` (Edit/Write) | Runs the formatter / dependency-audit commands a project declares under `project_tools` in its own config; nothing when absent. The shared-install replacement for the two `.example` hooks below (ADR 0017) |
+| `constitution_amendment_check.py` | `PostToolUse` (Edit/Write, constitution files only) | Warns (never blocks) when a constitution changed since the last commit without its `version`/`last_amended` frontmatter moving too — compares against the file's own committed path via `git show HEAD:<path>`, fails open if git isn't available (framework ADR 0007). Since framework ADR 0015 it watches **both** layers independently: the shared `docs/constitution.md` and a project's own `docs/<name>/constitution.md`. "The project one never weakens the supreme one" stays a semantic judgment `reviewer`/`coder` make while reading both — deliberately not a syntactic check |
+| `secret_leak_guard.py` | `PreToolUse` (Edit/Write, repo-wide) | Blocks a write whose new content matches a high-confidence credential pattern (AWS key ID, GitHub/Slack token, a private-key block) — stdlib regex, no scanner dependency, active by default. Never reads `docs/constitution.md`; works the same with or without it (framework ADR 0010) |
+| `validation_sync_check.py` | `PostToolUse` (Edit/Write) | Decides deterministically whether an approved spec's stakeholder-language companion needs re-syncing (language split? approved? requirements hash changed since the companion's `source_hash`?) and only then hands the session an exact instruction with absolute paths. Replaced the always-on Sonnet `agent` hook (framework ADR 0020) |
+| `project_tools.py` | `PostToolUse` (Edit/Write) | Runs the formatter / dependency-audit commands a project declares under `project_tools` in its own config; nothing when absent. The shared-install replacement for the two `.example` hooks below (framework ADR 0017) |
 | `auto_format.py.example` | `PostToolUse` (Edit/Write) | Template: runs your stack's formatter/linter on the file just touched. Rename to `auto_format.py` once you've filled in the real commands |
-| `dependency_audit.py.example` | `PostToolUse` (Edit/Write, no-ops unless the file is a recognized dependency manifest) | Template: runs your ecosystem's vulnerability audit (`npm audit`, `pip-audit`, …) when a manifest changes, reports findings as a `systemMessage`. Rename to `dependency_audit.py` once you've trimmed it to your real ecosystem(s) (ADR 0010) |
-| `pipeline_metrics.py` | `PostToolUse` (spec Write/Edit; subagent dispatch matched on `Task`/`Agent`) | Appends `spec_created`, `reconciliation_snapshot`, and `reviewer_verdict` events to the git-ignored `.claude/pipeline-metrics.jsonl` — raw observability, no dashboard. `reviewer_verdict` depends on your Claude Code version's subagent-dispatch tool actually being named `Task` or `Agent`; check empirically (ADR 0011) |
+| `dependency_audit.py.example` | `PostToolUse` (Edit/Write, no-ops unless the file is a recognized dependency manifest) | Template: runs your ecosystem's vulnerability audit (`npm audit`, `pip-audit`, …) when a manifest changes, reports findings as a `systemMessage`. Rename to `dependency_audit.py` once you've trimmed it to your real ecosystem(s) (framework ADR 0010) |
+| `pipeline_metrics.py` | `PostToolUse` (spec Write/Edit; subagent dispatch matched on `Task`/`Agent`) | Appends `spec_created`, `reconciliation_snapshot`, and `reviewer_verdict` events to the git-ignored `.claude/pipeline-metrics.jsonl` — raw observability, no dashboard. `reviewer_verdict` depends on your Claude Code version's subagent-dispatch tool actually being named `Task` or `Agent`; check empirically (framework ADR 0011) |
 | `_pipeline_metrics.py` | *(not wired — imported)* | Shared `log_event()` helper both `pipeline_metrics.py` and `spec_status_sync.py` import; not a hook entry point itself |
-| `_project_paths.py` | *(not wired — imported; also a CLI)* | The routing lookup every multi-project-aware hook shares (ADR 0013/0014): `resolve_project_root()` (this session's project subtree), `load_project_config()`, `state_file_path()`, `resolve_shared_docs_root()`, and `project_relative_path()` — the last being how a directory-scoped hook decides a `file_path` is its business whether it arrived relative or absolute (see below). Reads a user-level install's `framework.json` before inferring anything, and holds the **registration gate** `hook_should_run()` every hook calls first: under a user-level install an unregistered repo gets no hook effect at all (ADR 0017). `python _project_paths.py describe` prints the whole resolution as JSON — the `project-registration` skill's probe. Fails open to classic single-repo behaviour everywhere else |
+| `_project_paths.py` | *(not wired — imported; also a CLI)* | The routing lookup every multi-project-aware hook shares (framework ADR 0013/0014): `resolve_project_root()` (this session's project subtree), `load_project_config()`, `state_file_path()`, `resolve_shared_docs_root()`, and `project_relative_path()` — the last being how a directory-scoped hook decides a `file_path` is its business whether it arrived relative or absolute (see below). Reads a user-level install's `framework.json` before inferring anything, and holds the **registration gate** `hook_should_run()` every hook calls first: under a user-level install an unregistered repo gets no hook effect at all (framework ADR 0017). `python _project_paths.py describe` prints the whole resolution as JSON — the `project-registration` skill's probe. Fails open to classic single-repo behaviour everywhere else |
 
 Two of these hooks depend on a convention, not just file location:
 `spec_status_sync.py` only works if `/tasks` actually writes checkbox
@@ -144,14 +144,14 @@ merge those entries into your repo's real `.gitignore`.
 
 In the multi-project modes (B and C) that per-machine state can't live
 under the one shared `.claude/` — it would become the same physical
-file for every project. Per ADR 0013 those four files
+file for every project. Per framework ADR 0013 those four files
 (`session-handoff.md`, `pipeline-metrics.jsonl`, `settings.local.json`,
 `.plugin-gap-dismissed.json`) move into each project's own subtree,
-resolved through the routing lookup — which since ADR 0015 sits at
+resolved through the routing lookup — which since framework ADR 0015 sits at
 `docs/<name>/`, inside the one shared `docs/` tree rather than a
 separate `projects/` folder. `.gitignore.framework-additions` carries a
 `docs/*/` pattern for each of them, plus `.claude/projects.local.json`
-for the routing file itself. The accepted cost, named in ADR 0015: a
+for the routing file itself. The accepted cost, named in framework ADR 0015: a
 `docs/` tree that is no longer purely documentation.
 
 ## Why `claude_md_index_check.py` only nudges, unlike the other index hooks
@@ -174,19 +174,19 @@ number until this hook was added to catch it going forward.
 
 ## settings.example.json
 
-Wires every hook above to its event. Since ADR 0020 the build/test gate
+Wires every hook above to its event. Since framework ADR 0020 the build/test gate
 calls `run_build_test.py` (which reads `build_test_cmd` from the
 optional mode A config `.claude/project-config.json` and skips read-only
 subagents), and the stakeholder-language validation sync is the command
 hook `validation_sync_check.py`, not an always-on agent. Rename to
 `settings.json` once Domain 1 has written `.claude/project-config.json`
-— and, per ADR 0010, once `dependency_audit.py.example` is trimmed to
+— and, per framework ADR 0010, once `dependency_audit.py.example` is trimmed to
 your real ecosystem(s) and renamed the same way
 `auto_format.py.example` already needs to be.
 
 This is the **mode A (direct in-repo)** settings file, and it stays
 exactly as described above. It can't serve modes B/C, for the reason
-ADR 0013 gives: it relies on relative paths and the repo-local
+framework ADR 0013 gives: it relies on relative paths and the repo-local
 `.claude/hooks/`, and its `if` filters only match mode A's relative
 paths, while those modes share a single `settings.json` across every
 project.
@@ -240,7 +240,7 @@ classic file — four things differ:
   `~/.claude/hooks`, since no project has a `.claude` at all. `~`
   expands because every hook here runs in shell form — the existing
   `${CLAUDE_PROJECT_DIR:-.}` is itself bash parameter expansion, so
-  bash-compatible execution was already load-bearing (ADR 0014). It's
+  bash-compatible execution was already load-bearing (framework ADR 0014). It's
   a template, not a one-shot: unlike Domain 1's renames, the `.example`
   file stays in place for the next AI-repo or machine.
 - **The `SubagentStop` gate runs `run_build_test.py`** instead of a
@@ -248,7 +248,7 @@ classic file — four things differ:
   the current project's `project-config.json` (via the routing lookup)
   and executes it, propagating its exit code — so the gate still blocks
   on a failed build exactly as in mode A.
-- **(Superseded by ADR 0020.)** The two validation-summary `agent` hooks
+- **(Superseded by framework ADR 0020.)** The two validation-summary `agent` hooks
   described below are gone from both settings templates; the command
   hook `validation_sync_check.py` decides from the project config and
   resolved paths, and only then asks the session to sync. The original
@@ -268,12 +268,12 @@ Python, JSON output, dry run by default wherever they write.
 
 | File | What it does |
 |---|---|
-| `install_user_level.py` | Mode C install/upgrade (ADR 0017): namespace prefix, reference rewriting, `framework.json`, manifest, settings merge, collision and hand-edit refusal. Run from this repository; not itself installed |
+| `install_user_level.py` | Mode C install/upgrade (framework ADR 0017): namespace prefix, reference rewriting, `framework.json`, manifest, settings merge, collision and hand-edit refusal. Run from this repository; not itself installed |
 | `uninstall.py` | Removes exactly what the manifest lists; restores `settings.json` byte for byte; keeps the registry and project subtrees; restores retired files on request |
 | `register_project.py` | The deterministic half of lazy registration — one repo, or several from a plan file (bulk) |
-| `migrate_context.py` | Imports an existing doc base into an ADR 0015 subtree: folder mapping, per-project numbering, frontmatter, link rewriting, verification; never touches the source |
-| `census.py` + `census_extractors/` | The census engine (ADR 0019): inventory at the integration ref, drift, doc mentions, inline probes, ledger with watermark |
-| `metrics.py` | Feature markers for the event log, and the `/metrics` report (ADR 0020) |
+| `migrate_context.py` | Imports an existing doc base into an framework ADR 0015 subtree: folder mapping, per-project numbering, frontmatter, link rewriting, verification; never touches the source |
+| `census.py` + `census_extractors/` | The census engine (framework ADR 0019): inventory at the integration ref, drift, doc mentions, inline probes, ledger with watermark |
+| `metrics.py` | Feature markers for the event log, and the `/metrics` report (framework ADR 0020) |
 
 The framework's own tests live in `../tests/` (`python -m unittest` from
 there); they exercise every acceptance criterion of specs 0001–0003 in
@@ -296,7 +296,7 @@ session's documentation?" — `"docs/decisions/0001-x.md"` in mode A, or
 `None` if it's outside. It resolves the reported path against the
 routed project subtree *and* against `CLAUDE_PROJECT_DIR`, so the same
 check holds for the relative path mode A writes and for the resolved
-absolute one a mode B or mode C command has to use (since ADR 0015 the
+absolute one a mode B or mode C command has to use (since framework ADR 0015 the
 `docs` link no longer redirects project content in mode B either, so
 both routed modes arrive absolute). Match against **that** relative
 form, never against the raw input: a prefix/substring test on the raw
@@ -308,14 +308,14 @@ One consequence to watch when adding or changing a hook: the string
 that helper returns is **not the same shape in both cases**. Matched
 against `CLAUDE_PROJECT_DIR` (mode A) an ADR is
 `docs/decisions/0001-x.md`; matched against a routed subtree it is
-`decisions/0001-x.md`, because ADR 0015 put the project's own folders
+`decisions/0001-x.md`, because framework ADR 0015 put the project's own folders
 directly in the subtree with no second `docs/` level. A caller that
 tests for a literal `docs/` prefix therefore covers mode A only —
 `_project_paths.py`'s own module docstring carries this as a named open
 item against the hooks that still do.
 
 `constitution_amendment_check.py` is the one deliberate exception, and
-ADR 0015 changed what it has to recognize. There are now **two**
+framework ADR 0015 changed what it has to recognize. There are now **two**
 constitutions in the multi-project modes — the shared
 `docs/constitution.md` and a project's own
 `docs/<name>/constitution.md` — so matching on "the final two path

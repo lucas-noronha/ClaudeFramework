@@ -13,13 +13,13 @@ Two settings from this project's config change what follows (they live
 in `project-config.json`, or the optional `.claude/project-config.json`
 in mode A; absent means the default):
 
-- **`review_policy`** (ADR 0020): `per-task` (default) runs `reviewer`
+- **`review_policy`** (framework ADR 0020): `per-task` (default) runs `reviewer`
   on every coder-tier task as step 6 describes; `final-only` skips every
   per-task review, so the whole-feature `/review` is the only review
   pass; `structural-only` keeps the per-task review only when the spec's
   tier is structural. The final `/review` runs under every policy, and
   so does the build/test gate.
-- **`census.enabled`** (ADR 0019): turns on step 8.
+- **`census.enabled`** (framework ADR 0019): turns on step 8.
 
 Two modes, based on $ARGUMENTS.
 
@@ -47,7 +47,7 @@ Two modes, based on $ARGUMENTS.
    diff` would pull in work that isn't this task's. As part of this same
    pass, `reviewer` also appends reconciliation entries to the spec's
    own "## Reconciliation" section for this task's declared `FR-NN`/
-   `AC-NN` tags (see `docs/decisions/0009-per-task-spec-reconciliation.md`)
+   `AC-NN` tags (see framework ADR 0009)
    — nothing extra to orchestrate here, it's the same call. A
    **quickfix**-tier task skips review (and therefore reconciliation)
    entirely — per `docs/workflow/model-tiering.md`, don't spend a
@@ -79,16 +79,16 @@ implementing a dropped feature.
 
 Runs every remaining (unchecked) task in that spec's "## Tasks" section
 to completion, respecting the dependency graph `/tasks` recorded (see
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`):
+framework ADR 0004):
 
-0. **Feature markers** (ADR 0020): before the first wave run
+0. **Feature markers** (framework ADR 0020): before the first wave run
    `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" start --feature <spec id> --lane <fast if the spec has lite: true, else full> --tier <the spec's tier>`,
    and after the last one (or when the sweep stops) `metrics.py finish
    --feature <spec id>`. They let `/metrics` attribute subagents, gate
    runs and reviewer verdicts to this feature.
 
 1. **Worktree check** (see
-   `docs/decisions/0005-spec-worktree-lifecycle.md`): run `git worktree
+   framework ADR 0005): run `git worktree
    list` and look for a branch named `task/<spec-short-name>` (matching
    this spec's own filename slug).
    - If the **current** session's working directory already is that
@@ -130,7 +130,7 @@ to completion, respecting the dependency graph `/tasks` recorded (see
    work. This is the *only* isolation a task gets — a task never gets a
    worktree of its own; every task in this sweep shares the one
    worktree from step 1 (see
-   `docs/decisions/0005-spec-worktree-lifecycle.md`).
+   framework ADR 0005).
 5. If `superpowers` is enabled this session, invoke its
    `dispatching-parallel-agents`/`subagent-driven-development` skills
    to structure this wave dispatch, and `executing-plans` for running

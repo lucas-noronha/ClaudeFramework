@@ -8,14 +8,14 @@
 .claude/**/__pycache__/
 .claude/**/*.pyc
 
-# Multi-project routing (external AI-repo / user-level modes, ADR 0013).
+# Multi-project routing (external AI-repo / user-level modes, framework ADR 0013).
 # Maps this machine's own absolute CLAUDE_PROJECT_DIR paths to project
 # subtrees, so it is per-machine by design and meaningless — actively
 # harmful — on anyone else's checkout. Same lifecycle as settings.local.json.
 .claude/projects.local.json
 
-# Per-project operational state under docs/<name>/ (ADR 0013, layout per
-# ADR 0015 — there is no projects/ folder; each project nests inside the
+# Per-project operational state under docs/<name>/ (framework ADR 0013, layout per
+# framework ADR 0015 — there is no projects/ folder; each project nests inside the
 # one shared docs/ tree). In multi-project modes these four files move out
 # of .claude/ into each project's own subtree, so the entries at the top of
 # this file no longer cover them — without these lines, one machine's

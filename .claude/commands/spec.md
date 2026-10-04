@@ -38,9 +38,9 @@ From the description in $ARGUMENTS:
    flag that explicitly as one of the "unclear, ask" items below rather
    than formalizing it silently. **There can be two of them, and you
    read both whenever both exist** (see
-   `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
+   framework ADR 0015):
    - the supreme layer at the **shared** `docs/` root —
-     `docs/constitution-baseline.md` plus `docs/constitution.md` (ADR 0018) —
+     `docs/constitution-baseline.md` plus `docs/constitution.md` (framework ADR 0018) —
      (the one `project-registration`'s step 4 points you at for shared
      material) — always, and it is a non-negotiable floor;
    - `<project-subtree>/constitution.md` — the project's own
@@ -54,7 +54,7 @@ From the description in $ARGUMENTS:
    just the supreme pair in the repo's own `docs/`, and this step is today's
    single-file check, unchanged.
 4. **Area and lineage, automatically — never ask the human to tag
-   this** (see `docs/decisions/0008-spec-area-lineage.md`): read
+   this** (see framework ADR 0008): read
    `docs/product/specs/README.md`, already grouped by area. If this
    spec clearly extends the same functional domain/capability as
    specs already tagged with one, reuse that exact `area` value;

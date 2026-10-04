@@ -8,7 +8,7 @@ skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
 actually live (registering the project first if it isn't yet), and in
 the common case costs one check and changes nothing.
 
-Rationale and conventions: `docs/decisions/0019-living-architecture-docs.md`
+Rationale and conventions: framework ADR 0019
 and `docs/workflow/living-architecture-docs.md` (describing is not
 prescribing, the markers, no inventory numbers in prose). Every census
 call below is `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/census.py" <command>`;

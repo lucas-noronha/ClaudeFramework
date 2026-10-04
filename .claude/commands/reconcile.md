@@ -1,5 +1,5 @@
 ---
-description: On-demand spec-vs-code fidelity sweep for a spec that's already `implemented` — catches drift that happened after the fact, closing the gap ADR 0009 left open (the per-task reconciliation pass only covers a spec's own /implement sweep). Never gates anything; purely diagnostic.
+description: On-demand spec-vs-code fidelity sweep for a spec that's already `implemented` — catches drift that happened after the fact, closing the gap framework ADR 0009 left open (the per-task reconciliation pass only covers a spec's own /implement sweep). Never gates anything; purely diagnostic.
 argument-hint: path to an implemented spec (docs/product/specs/NNNN-name.md)
 ---
 
@@ -18,7 +18,7 @@ build/test gate to have just run — it's a standalone audit, runnable
 any time against a spec that's been sitting in `implemented` for a
 while, to answer "does the code still actually do what this spec says,
 or has something drifted since." See
-`docs/decisions/0012-on-demand-reconciliation-sweep.md` for why this is
+framework ADR 0012 for why this is
 a fresh check against current code state, not a diff (this framework
 doesn't persist a file manifest per task, so there's nothing reliable
 to diff against after the fact).

@@ -19,7 +19,7 @@ This document describes the conceptual flow. For the practical
 step-by-step of "what do I type in chat", see
 `feature-development-guide.md`. For the subagent/slash-command/skill
 implementation that materializes this flow, see
-`docs/decisions/0001-tooling-agents-commands-skills.md` and the
+framework ADR 0001 and the
 `.claude/` folder at the repository root.
 
 ## Flow, from requirement to code

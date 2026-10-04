@@ -78,8 +78,8 @@ reading more than one in modes B/C.
 
 ## References
 
-`docs/product/specs/0001-mode-c-hardening.md` (FR-10, AC-06),
-`docs/decisions/0007-constitution-document.md`,
-`docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`,
+`evolution/product/specs/0001-mode-c-hardening.md` (FR-10, AC-06),
+`evolution/decisions/0007-constitution-document.md`,
+`evolution/decisions/0015-unified-docs-tree-and-layered-constitution.md`,
 `docs/constitution-baseline.md`, `docs/constitution.md`,
 `.claude/hooks/constitution_amendment_check.py`

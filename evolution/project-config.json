@@ -1,0 +1,12 @@
+{
+  "build_test_cmd": "python -m unittest discover -s tests -t tests",
+  "canonical_lang": "English",
+  "stakeholder_lang": "English",
+  "stakeholder_lang_code": "en",
+  "main_integration_branch": "master",
+  "review_policy": "per-task",
+  "census": {
+    "enabled": false,
+    "extractor": "none"
+  }
+}

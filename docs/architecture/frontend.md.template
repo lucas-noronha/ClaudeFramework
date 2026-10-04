@@ -19,7 +19,7 @@ can check dependency/boundary violations against it mechanically.
 Delete this file (and its row in `CLAUDE.md`'s index) entirely if the
 project has no frontend, or no boundaries worth documenting yet.
 
-**How this doc stays true (ADR 0019).** It describes the code; it
+**How this doc stays true (framework ADR 0019).** It describes the code; it
 doesn't prescribe what the code should become. A deviation is never a
 pattern to copy: mark it as `> **Pitfall:**`, `> **Convention:**` or
 `> **Finding (needs a decision):**`, and give a finding (and any

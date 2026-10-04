@@ -2,7 +2,7 @@
 .claude/pipeline-metrics.jsonl — no dashboard, no new service, just a
 raw event stream a human (or an agent, on request) can summarize later
 (e.g. with `jq`). Purely additive: never blocks, never rewrites
-anything a human wrote. See docs/decisions/0011-pipeline-metrics.md.
+anything a human wrote. See framework ADR 0011.
 
 Wired to several different triggers in settings.json, all landing here:
 
@@ -12,7 +12,7 @@ Wired to several different triggers in settings.json, all landing here:
   CURRENT total, not a delta, so it's correct regardless of how the
   Edit was actually applied under the hood)
 - PostToolUse on any subagent dispatch -> "subagent_dispatched"
-  (ADR 0020: the per-feature subagent count `/metrics` compares)
+  (framework ADR 0020: the per-feature subagent count `/metrics` compares)
 - PostToolUse on a subagent dispatch whose subagent_type is "reviewer"
   (or `<prefix>-reviewer` under a user-level install) ->
   "reviewer_verdict" (Approved/Returned, best-effort spec id parsed
@@ -87,7 +87,7 @@ def handle_spec_write(project: str, abspath: str, is_new_write: bool) -> None:
 
 def _role(subagent_type: str) -> str:
     """`cfw-reviewer` → `reviewer` under a prefixed user-level install
-    (ADR 0017); unchanged otherwise.
+    (framework ADR 0017); unchanged otherwise.
     """
     prefix = framework_config().get("prefix")
     if prefix and subagent_type.startswith(prefix + "-"):
@@ -99,7 +99,7 @@ def handle_subagent_dispatch(project: str, data: dict) -> None:
     tool_input = data.get("tool_input", {})
     subagent_type = str(tool_input.get("subagent_type") or tool_input.get("subagent") or "general-purpose")
 
-    # Every dispatch is counted (ADR 0020): `/metrics` compares the
+    # Every dispatch is counted (framework ADR 0020): `/metrics` compares the
     # subagent count per feature between the fast lane and the full path.
     log_event(project, "subagent_dispatched", subagent_type=subagent_type, role=_role(subagent_type))
 
@@ -128,7 +128,7 @@ def handle_subagent_dispatch(project: str, data: dict) -> None:
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return

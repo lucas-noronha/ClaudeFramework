@@ -1,14 +1,14 @@
 """SubagentStop gate: run this project's own build/test command — but
 only when the subagent that just stopped can have changed code (spec
-0003 FR-02, ADR 0020).
+0003 FR-02, framework ADR 0020).
 
 Where the command comes from: in modes B/C one shared `settings.json`
-serves several projects (ADR 0013), so static text can't hold their
+serves several projects (framework ADR 0013), so static text can't hold their
 different commands; the command is read at runtime from the project's
 `project-config.json` (the optional `.claude/project-config.json` in
-mode A, ADR 0020).
+mode A, framework ADR 0020).
 
-Which stops run it. Before ADR 0020 every `SubagentStop` ran the full
+Which stops run it. Before framework ADR 0020 every `SubagentStop` ran the full
 build, so read-only subagents like Explore, `triage`, `researcher` and
 `architect` each paid for one. Now:
 
@@ -66,7 +66,7 @@ NON_CODE_BUILTINS = {"Explore", "Plan", "claude-code-guide", "statusline-setup",
 
 def role_of(agent_type: str) -> str:
     """`cfw-coder` → `coder`: strips an install prefix, so a user-level
-    install's renamed agents still match (ADR 0017).
+    install's renamed agents still match (framework ADR 0017).
     """
     prefix = framework_config().get("prefix")
     if prefix and agent_type.startswith(prefix + "-"):
@@ -160,7 +160,7 @@ def should_run_gate(data: dict, project: str):
 
 
 def main() -> int:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     if not hook_should_run(project):

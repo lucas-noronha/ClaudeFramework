@@ -11,7 +11,7 @@ coder.
 **Scope is whatever your caller hands you, never a default `git diff`
 you compute yourself.** `/review` hands you the whole cumulative
 feature diff on purpose (that's its job — see
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`). `/implement`'s
+framework ADR 0004). `/implement`'s
 orchestration mode hands you exactly one task's own file list (the
 files `coder` reported changing for that task) — review only those
 files' diffs, e.g. `git diff -- <path1> <path2> ...`, never a bare
@@ -51,12 +51,12 @@ your actual rules):
       applicable to this project
 
 **Constitution — check both layers, the supreme one wins** (see
-`docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`).
+framework ADR 0015).
 When a constitution exists, the diff is checked against it, and since
-ADR 0015 there can be two:
+framework ADR 0015 there can be two:
 
 - the **supreme** layer at the shared `docs/` root — always, a
-  non-negotiable floor binding every project. Since ADR 0018 it is two
+  non-negotiable floor binding every project. Since framework ADR 0018 it is two
   files: `docs/constitution-baseline.md` (framework Principles I–V) and
   `docs/constitution.md` (organization principles, VI onward);
 - the **project's own** `<project-subtree>/constitution.md` — only if it
@@ -72,7 +72,7 @@ project layer, only the supreme pair (or, in a project older than ADR
 checklist failure (`Returned`, naming the principle).
 
 **Architecture docs: advisory or binding, by status** (see
-`docs/workflow/living-architecture-docs.md`, ADR 0019):
+`docs/workflow/living-architecture-docs.md`, framework ADR 0019):
 
 - A rule in an `active` architecture doc is a checklist item: a diff
   that violates it is `Returned`.
@@ -95,7 +95,7 @@ checklist failure (`Returned`, naming the principle).
   was never committed is reported as exactly that, never as "committed".
 
 **Never silently reconcile an apparent contradiction between the two.**
-No hook detects one — ADR 0015 left "the project layer never weakens the
+No hook detects one — framework ADR 0015 left "the project layer never weakens the
 supreme one" a semantic judgment, and at review time it is yours. When a
 project principle reads as weakening, narrowing or contradicting a
 supreme one:
@@ -127,7 +127,7 @@ checks for a per-task scope; DoD and reconciliation completeness are
 feature-level questions, not per-task ones.
 
 **Reconciliation, per-task scope only** (see
-`docs/decisions/0009-per-task-spec-reconciliation.md`). After deciding
+framework ADR 0009). After deciding
 Approved/Returned, read this task's own line in the spec's "## Tasks"
 section for its `Tests:` field — the `FR-NN`/`AC-NN` tags it declared.
 For each one, append exactly one line to the spec's own
@@ -150,7 +150,7 @@ one, not something to retrofit on the fly here).
 
 **Sweep scope — called only from `/reconcile`, against a spec whose
 `status` is already `implemented`** (see
-`docs/decisions/0012-on-demand-reconciliation-sweep.md`). This is
+framework ADR 0012). This is
 neither of the two scopes above: no file list, no diff, and no
 build/test gate prerequisite — you're auditing already-shipped code
 long after the fact, not gating a merge. Read the spec's `FR-NN`/
@@ -167,7 +167,7 @@ Returned verdict here; report the sweep's findings directly, this scope
 never gates anything.
 
 **Doc-verification scope — called only from `/update-docs promote`**
-(ADR 0019). You are checking a `draft` architecture doc, not a diff, and
+(framework ADR 0019). You are checking a `draft` architecture doc, not a diff, and
 you must not have drafted it: the point is an independent pass. For
 every rule and claim in the doc, look for evidence in the code (at the
 integration branch when you can, `git show <ref>:<path>`) and cite the

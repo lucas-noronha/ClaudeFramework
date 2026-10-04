@@ -14,7 +14,7 @@ of breaking a dropped feature into tasks.
 Read the spec at $ARGUMENTS, including its "Technical plan" section
 (written by `/plan` — for a standard/structural spec this is now an
 actual technical plan, not just a complexity tier; see
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`).
+framework ADR 0004).
 
 Generate a numbered list of tasks, each small enough to fit a single
 `/implement` call — if a task looks too big, split it into two. This is

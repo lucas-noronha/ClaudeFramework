@@ -12,7 +12,7 @@ context_budget: ~450 tokens
 This document is supreme: no spec, technical plan, or code may
 knowingly contradict a principle below **or in
 `constitution-baseline.md`**, the framework's baseline layer (Principles
-I–V) that this file extends (ADR 0018). Both are loaded before `/spec`,
+I–V) that this file extends (framework ADR 0018). Both are loaded before `/spec`,
 `/plan`, `coder`/`quickfix`, and `reviewer` do their work. If a request
 conflicts with a principle in either, that conflict gets flagged
 explicitly (back to the human, or into a deliberate amendment of this
@@ -60,6 +60,6 @@ worth being non-negotiable regardless of architecture or stack.
   principle would be lost. A principle worth having in every adopter's
   baseline is a change to the framework repository itself.
 - This is deliberately not a hard technical gate (see
-  `docs/decisions/0007-constitution-document.md` for why): an agent
+  framework ADR 0007 for why): an agent
   can still get it wrong, same trust model the rest of this pipeline
   already runs on for architecture docs and ADRs.

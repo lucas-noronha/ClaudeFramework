@@ -40,9 +40,10 @@ docs/
   constitution.md  → the organization/project layer on top of the baseline: supreme, versioned, non-negotiable principles (secrets, security baseline, one placeholder slot for a project-specific one) — checked by /spec, /plan, coder/quickfix, reviewer; amended under its own Governance section, never edited silently (ADR 0007)
   glossary.md.template
   architecture/    → overview template + 2 blank slots (module-structure, frontend) — no default architecture pattern shipped; fill in your project's actual shape or delete what doesn't apply
-  decisions/       → ADR template + worked-example ADRs (0001 tooling split, 0002 plugin integration, 0007 constitution.md, 0008 spec area/lineage, 0009 per-task reconciliation, among others)
+  decisions/       → only the ADR template (0000-adr-template.md) — a project's own ADRs start at 0001 here
   product/         → spec intake template (a spec auto-tags its own area/lineage and carries a "## Reconciliation" section — ADR 0008/0009) + stakeholder-facing validation-summary template
   workflow/        → living-architecture-docs.md (how architecture docs stay true to code), the conceptual flow, the practical "what do I type" guide, parallel-work guidance, the model-tiering convention, the Core-vs-Optional plugin catalog, and how the constitution/lineage/reconciliation/metrics layer fits together
+evolution/         → the framework's OWN specs and ADRs (its development history) — never copied into a project; see evolution/README.md for the boundary
 tests/             → the framework's own tests (not shipped into projects): every acceptance criterion of specs 0001–0003, run with `python -m unittest` from `tests/`
 CHANGELOG.md       → what changed, per spec
 ```
@@ -71,7 +72,7 @@ set up yet, not as a real value. Common ones:
 ## Adopting this in a new project
 
 `/setup-framework` opens with **one question: which of three adoption
-modes you want** (`docs/decisions/0014-setup-framework-adoption-modes.md`).
+modes you want** (`evolution/decisions/0014-setup-framework-adoption-modes.md`).
 They're mutually exclusive whole-repo commitments, and they differ only
 in where the machinery physically lives — so the command explains each
 one's real trade-offs before you pick, because **a wrong choice is
@@ -87,7 +88,7 @@ every repo pointing at the old layout).
 | **C — User-level** | `~/.claude` on your machine | nothing at all | you want one setup covering every repo you touch, per developer |
 
 Modes B and C both back **several projects from one copy** of the
-machinery, using the same mechanism (`docs/decisions/0013-multi-project-ai-repo.md`):
+machinery, using the same mechanism (`evolution/decisions/0013-multi-project-ai-repo.md`):
 a per-machine, gitignored `projects.local.json` routes this session's
 `CLAUDE_PROJECT_DIR` to that project's own subtree, and a
 `project-config.json` in that subtree holds its build/test command and
@@ -119,7 +120,7 @@ to choose, and no migration when a second project arrives.
      `/implement`, `/review`, and `/worktree` (`superpowers` specifically backs a
      complementary pass at nearly every one of those stages, not just
      implementation — see
-     `docs/decisions/0003-superpowers-sdd-wrapping.md`).
+     `evolution/decisions/0003-superpowers-sdd-wrapping.md`).
    - **Domain 3** — merges `.mcp.json.example` and
      `.gitignore.framework-additions` into your project's real
      `.mcp.json`/`.gitignore` (creating either fresh if you don't have
@@ -130,7 +131,7 @@ to choose, and no migration when a second project arrives.
      `docs/architecture/module-structure.md`/`frontend.md` from
      patterns it detects there (layout, naming conventions, observed
      import direction between layers, cited against sample files) — see
-     `docs/decisions/0006-architecture-anamnesis.md`. Always a **draft**
+     `evolution/decisions/0006-architecture-anamnesis.md`. Always a **draft**
      clearly marked as such, never presented as finished; skipped
      entirely on a green field with nothing yet to detect.
 3. Read (and correct) the two architecture-doc slots
@@ -196,7 +197,7 @@ re-run Domain 5 after any fresh clone or on a new machine — see Domain
 Claude Code already loads `~/.claude` for every session on a machine,
 so if the machinery lives there, a code repo needs no copied file *and*
 no link to reach it. Pick mode C and **Domain 6** runs the installer
-from this repository (`docs/decisions/0017-user-level-install-mechanics.md`):
+from this repository (`evolution/decisions/0017-user-level-install-mechanics.md`):
 
 ```
 python .claude/scripts/install_user_level.py                # dry run
@@ -247,13 +248,13 @@ directory with `--config-dir`.
 | Pipeline cost per feature | `/metrics` | — | — |
 | Framework setup | `/setup-framework` | — | — |
 
-Full rationale for this exact split → `docs/decisions/0001-tooling-agents-commands-skills.md`.
+Full rationale for this exact split → `evolution/decisions/0001-tooling-agents-commands-skills.md`.
 Why `/plan`/`/tasks`/`/implement` are divided this way (technical
 planning in `/plan`, mechanical sequencing in `/tasks`, dependency-aware
 orchestration + per-task review in `/implement`) →
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`.
+`evolution/decisions/0004-plan-tasks-implement-rebalance.md`.
 Why a spec's `/implement` sweep gets its own worktree (and a task never
-does) → `docs/decisions/0005-spec-worktree-lifecycle.md`.
+does) → `evolution/decisions/0005-spec-worktree-lifecycle.md`.
 Why each role gets the model tier it gets → `docs/workflow/model-tiering.md`.
 
 ## What's genuinely generic vs. what's yours to define
@@ -271,7 +272,7 @@ Why each role gets the model tier it gets → `docs/workflow/model-tiering.md`.
   shipped":** `docs/constitution.md`'s Core Principles (secrets,
   logging, input validation, least privilege, dependency vetting) ship
   with actual content, not a blank slot. See
-  `docs/decisions/0007-constitution-document.md` for why this doesn't
+  `evolution/decisions/0007-constitution-document.md` for why this doesn't
   contradict the architecture blank-slots decision below — secrets/
   security hygiene is close to universal across projects, unlike
   module layout or tenancy strategy. Principle VI is left an explicit
@@ -285,7 +286,7 @@ Why each role gets the model tier it gets → `docs/workflow/model-tiering.md`.
   structure and dependency rules, or delete what doesn't apply.
   `/setup-framework`'s Domain 4 can draft a starting point from an
   *existing* codebase's own detected patterns (see
-  `docs/decisions/0006-architecture-anamnesis.md`), but only ever as a
+  `evolution/decisions/0006-architecture-anamnesis.md`), but only ever as a
   draft you still have to read and correct — it never finishes these
   files on its own.
 - **A worked example you're expected to edit:**
@@ -294,7 +295,7 @@ Why each role gets the model tier it gets → `docs/workflow/model-tiering.md`.
   list here only ever reflects whatever's installed on whichever
   machine last edited it — the mechanism around it (`/setup-framework`,
   `plugin-awareness`, `plugin_gap_check.py`) is generic, the table
-  contents are not. See `docs/decisions/0002-plugin-integration.md`.
+  contents are not. See `evolution/decisions/0002-plugin-integration.md`.
 - **Not shipped at all, by design:** any skill encoding a specific
   architecture or domain rule (a tenant-isolation checklist, a module-
   scaffolding pattern, a sensitive-data-handling rule, etc.). The
@@ -332,7 +333,7 @@ everything else was:
   0001's rationale) and Anthropic's own Claude Code best practices,
   this framework's `/plan` had drifted into doing almost nothing
   (classify + conditional ADR) while `/tasks` quietly absorbed the real
-  technical-planning judgment. `docs/decisions/0004-plan-tasks-implement-rebalance.md`
+  technical-planning judgment. `evolution/decisions/0004-plan-tasks-implement-rebalance.md`
   moves that judgment back to `/plan` (a real, tier-proportional
   technical plan for standard/structural specs, an explicit scope-creep
   check, nothing for trivial), makes `/tasks` purely mechanical again,
@@ -355,7 +356,7 @@ everything else was:
   the per-task pass deliberately skips) — it's complementary, not
   replaced.
 - **A spec's `/implement` sweep gets its own worktree, so several specs
-  can run at once** — `docs/decisions/0005-spec-worktree-lifecycle.md`.
+  can run at once** — `evolution/decisions/0005-spec-worktree-lifecycle.md`.
   Orchestration mode now checks for a worktree named
   `task/<spec-short-name>` before starting and offers to create one
   (via `/worktree`'s own steps) if it's missing, then hands off to a
@@ -370,7 +371,7 @@ everything else was:
   the branch and open a PR.
 - **`superpowers` wrapped across the whole SDD lifecycle, not just
   `coder`** — ADR 0002 originally scoped `superpowers`'s complementary
-  invocation to `coder`'s TDD/debugging pass only. `docs/decisions/0003-superpowers-sdd-wrapping.md`
+  invocation to `coder`'s TDD/debugging pass only. `evolution/decisions/0003-superpowers-sdd-wrapping.md`
   extends the same absorbed+complementary mechanism to `/spec`
   (`brainstorming`), `/plan` (`writing-plans`, standard/structural
   only), `/implement`'s orchestration mode
@@ -445,7 +446,7 @@ everything else was:
   framework's own process needs (`adr-writing`, `skill-authoring`);
   every agent that referenced the removed skills/docs by name now
   refers to "whatever your project's architecture docs/skills define"
-  generically instead. `docs/decisions/0006-architecture-anamnesis.md`
+  generically instead. `evolution/decisions/0006-architecture-anamnesis.md`
   later revisited this, carefully: `/setup-framework` may now draft
   these two files from patterns it detects in an *existing* codebase
   being onboarded — the unsafe part of the original mistake was
@@ -516,7 +517,7 @@ everything else was:
   maturity: none of the pipeline's docs previously carried
   non-negotiable, cross-cutting principles distinct from `CLAUDE.md`'s
   project glue or an ADR's point-in-time decision.
-  `docs/decisions/0007-constitution-document.md` adds a versioned,
+  `evolution/decisions/0007-constitution-document.md` adds a versioned,
   supreme document (secrets, logging, input validation, least
   privilege, dependency vetting, prefilled — the one deliberate
   exception to shipping no defaults) that `/spec`, `/plan`,
@@ -528,7 +529,7 @@ everything else was:
   rather than `adr_immutability_guard.py`'s hard block, since
   amendments are expected over time, not frozen like an accepted ADR.
 - **Specs auto-tag their own `area` and lineage** —
-  `docs/decisions/0008-spec-area-lineage.md`, also from the same
+  `evolution/decisions/0008-spec-area-lineage.md`, also from the same
   maturity comparison (OpenSpec's brownfield delta model was the
   reference point, deliberately not adopted wholesale — see the ADR's
   Options). `/spec` now reads `docs/product/specs/README.md` before
@@ -542,7 +543,7 @@ everything else was:
   `requirements-template.md` never actually produced one — no spec's
   status could have auto-flipped to `implemented` before this fix.
 - **`reviewer` reconciles spec vs. diff, per task** —
-  `docs/decisions/0009-per-task-spec-reconciliation.md`, closing the
+  `evolution/decisions/0009-per-task-spec-reconciliation.md`, closing the
   same maturity gap GitHub Spec Kit's `/speckit.reconcile` and
   OpenSpec's `/opsx:sync` cover, scoped to this framework's own
   `/implement` pass on direct instruction rather than a new standalone
@@ -558,7 +559,7 @@ everything else was:
   already `implemented` — noted as a candidate for a future ADR, not
   solved here.
 - **`docs/constitution.md` gets technical teeth** —
-  `docs/decisions/0010-constitution-technical-enforcement.md`. ADR
+  `evolution/decisions/0010-constitution-technical-enforcement.md`. ADR
   0007 made the constitution supreme but only checked by an agent's own
   judgment; this closes that with three additions, none of them gated
   on the file existing: `secret_leak_guard.py` (new, active by
@@ -574,7 +575,7 @@ everything else was:
   shape was rejected outright, since it would trip on this framework's
   own `{{PLACEHOLDER}}`/`.example` conventions constantly.
 - **A raw pipeline-observability event log** —
-  `docs/decisions/0011-pipeline-metrics.md`. `.claude/pipeline-metrics.jsonl`
+  `evolution/decisions/0011-pipeline-metrics.md`. `.claude/pipeline-metrics.jsonl`
   (git-ignored, per-machine), one JSON line per event:
   `spec_created`/`spec_implemented` (lets `draft`→`implemented` elapsed
   time be computed later), `reconciliation_snapshot` (current
@@ -589,7 +590,7 @@ everything else was:
   Claude Code version actually uses isn't something this framework can
   verify generically — worth checking empirically after adopting it.
 - **`/reconcile`** —
-  `docs/decisions/0012-on-demand-reconciliation-sweep.md`, closing the
+  `evolution/decisions/0012-on-demand-reconciliation-sweep.md`, closing the
   gap ADR 0009 named explicitly: the per-task reconciliation pass only
   catches drift during a spec's own `/implement` sweep, nothing
   revisited a spec once `implemented` if later work touched the same

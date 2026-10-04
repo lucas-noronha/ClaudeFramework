@@ -4,7 +4,7 @@ scope: parallel-work
 status: active
 last_updated: {{DATE}}
 context_budget: ~750 tokens
-related: [../../.claude/commands/worktree.md, feature-development-guide.md, ../decisions/0004-plan-tasks-implement-rebalance.md, ../decisions/0005-spec-worktree-lifecycle.md]
+related: [../../.claude/commands/worktree.md, feature-development-guide.md]
 ---
 
 # Running more than one task at once
@@ -13,7 +13,7 @@ related: [../../.claude/commands/worktree.md, feature-development-guide.md, ../d
 
 `/implement <spec-path>` (orchestration mode) now checks for a spec's
 own worktree itself and offers to create one before starting, per
-`../decisions/0005-spec-worktree-lifecycle.md` — you don't have to
+framework ADR 0005 — you don't have to
 remember to run `/worktree` by hand first, though you still can. Either
 way it always starts from `origin/{{MAIN_INTEGRATION_BRANCH}}` (or the
 local branch, only if it has no pending changes), never from a dirty
@@ -29,7 +29,7 @@ the same deterministic build/test gate.
 Isolation stops at the spec, deliberately — a single task never gets a
 worktree of its own, no matter how large. Every task in a spec's
 `/implement` sweep shares that one worktree, isolated from its siblings
-only at the subagent-context level (ADR 0004 already provides this);
+only at the subagent-context level (framework ADR 0004 already provides this);
 splitting further would trade a session hand-off per task for isolation
 this framework doesn't think is worth that cost. The actual goal —
 several *specs* running at once without racing on the same working
@@ -48,7 +48,7 @@ the other only `{{FRONTEND_DIR}}/**`, and neither depends on the
 other's contract), you don't need a second worktree at all.
 
 Running `/implement <spec-path>` (orchestration mode, see
-`../decisions/0004-plan-tasks-implement-rebalance.md`) now does this
+framework ADR 0004) now does this
 automatically: it reads every task's `Depends on` field, computes
 dependency-ready waves, and dispatches a whole wave's tasks to their
 own subagent calls in parallel, one call per task. Reach for the
@@ -101,7 +101,7 @@ section (written by `/tasks`) from within that worktree.
 - Don't paste the whole architecture or several ADRs manually — the
   agents already know where to read, via `CLAUDE.md`.
 - Calling `/implement <spec-path>` to sweep a whole spec is fine —
-  that's orchestration mode's actual job (ADR 0004), and each task
+  that's orchestration mode's actual job (framework ADR 0004), and each task
   still gets its own isolated subagent call underneath, not one
   subagent working through several tasks in the same context window.
   What still breaks the token economy is asking the *main session* to

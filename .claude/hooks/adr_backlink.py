@@ -14,7 +14,7 @@ from _project_paths import hook_should_run, normalize, read_hook_input, resolve_
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return

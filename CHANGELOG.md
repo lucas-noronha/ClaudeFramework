@@ -5,14 +5,15 @@
 Three specs written after the first real mode C adoption (2026-09-30),
 implemented together:
 
-- [0001 — Mode C hardening](docs/product/specs/0001-mode-c-hardening.md)
-- [0002 — Living architecture docs](docs/product/specs/0002-living-architecture-docs.md)
-- [0003 — Proportional pipeline cost](docs/product/specs/0003-proportional-pipeline-cost.md)
+- [0001 — Mode C hardening](evolution/product/specs/0001-mode-c-hardening.md)
+- [0002 — Living architecture docs](evolution/product/specs/0002-living-architecture-docs.md)
+- [0003 — Proportional pipeline cost](evolution/product/specs/0003-proportional-pipeline-cost.md)
 
-Decisions: ADR [0017](docs/decisions/0017-user-level-install-mechanics.md),
-[0018](docs/decisions/0018-constitution-baseline-layer.md),
-[0019](docs/decisions/0019-living-architecture-docs.md),
-[0020](docs/decisions/0020-proportional-pipeline-cost.md) — all `proposed`.
+Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
+[0018](evolution/decisions/0018-constitution-baseline-layer.md),
+[0019](evolution/decisions/0019-living-architecture-docs.md),
+[0020](evolution/decisions/0020-proportional-pipeline-cost.md), and
+[0021](evolution/decisions/0021-separate-evolution-from-skeleton.md) for the split below — all `proposed`.
 
 ### Highlights
 
@@ -33,6 +34,20 @@ Decisions: ADR [0017](docs/decisions/0017-user-level-install-mechanics.md),
 
 ### Also in this release (outside the three specs)
 
+- **Changed — the framework's own specs and ADRs moved to `evolution/`**
+  (framework ADR 0021). The skeleton projects receive is now exactly
+  `.claude/`, `docs/`, `CLAUDE.md.template`, `.mcp.json.example` and
+  `.gitignore.framework-additions`. `docs/decisions/` ships only the
+  0000 template, and `docs/product/specs/` ships empty. Shipped files say
+  "framework ADR NNNN" / "framework spec NNNN" instead of a path or a bare
+  number that a project's own ADRs would collide with. The installer no
+  longer installs framework ADRs, which reverses spec 0001 FR-01's
+  "reference ADRs". `evolution/` has a project subtree's shape, so the
+  pipeline can run on the framework itself (`register_project.py
+  --subtree`). `tests/test_skeleton_boundary.py` enforces the boundary.
+  *Upgrade note:* a mode A project adopted earlier can delete the
+  framework ADRs 0001–0020 (and the generated README) from its own
+  `docs/decisions/`.
 - **Fixed — hooks silently ignored non-ASCII paths on Windows.** Every
   hook read stdin with `json.load(sys.stdin)`, which on Windows decodes
   with cp1252. Claude Code sends UTF-8, so a path like

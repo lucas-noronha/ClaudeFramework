@@ -35,7 +35,7 @@ id: NNNN
 status: draft
 area: <short-kebab-case tag for the functional domain/capability this
   spec belongs to — set automatically by /spec, never asked of the
-  human; see docs/decisions/0008-spec-area-lineage.md>
+  human; see framework ADR 0008>
 relates_to: []
 resumo: <the one question this spec answers — index tables copy it verbatim>
 naoResponde: <when opening this spec is wasted — optional>
@@ -83,7 +83,7 @@ implementation by an AI agent. -->
 interact with this feature, and what each can do. -->
 
 ## Related specs
-<!-- Set automatically by /spec (docs/decisions/0008-spec-area-lineage.md)
+<!-- Set automatically by /spec (framework ADR 0008)
 — every other spec sharing this spec's `area`, with its relationship to
 this one. Not a human-declared field. Empty means either this is that
 area's first spec, or /spec found no real relationship to declare —
@@ -107,7 +107,7 @@ architecture doc, don't re-explain it here. -->
 ## Reconciliation
 <!-- Populated automatically and incrementally by `reviewer` during
 `/implement`'s per-task pass
-(docs/decisions/0009-per-task-spec-reconciliation.md) — one line per
+(framework ADR 0009) — one line per
 FR/AC a task claimed via its `Tests:` field, noting whether what was
 actually built matches this spec's own text. Never write here by hand.
 Empty once every "## Tasks" box is checked is a gap `/review`'s final

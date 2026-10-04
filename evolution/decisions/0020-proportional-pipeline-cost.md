@@ -112,9 +112,9 @@ metrics make the remaining trade-off — how much review a project needs
 
 ## References
 
-`docs/product/specs/0003-proportional-pipeline-cost.md`,
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`,
-`docs/decisions/0011-pipeline-metrics.md`,
-`docs/decisions/0016-project-disciplines-configuration.md`,
+`evolution/product/specs/0003-proportional-pipeline-cost.md`,
+`evolution/decisions/0004-plan-tasks-implement-rebalance.md`,
+`evolution/decisions/0011-pipeline-metrics.md`,
+`evolution/decisions/0016-project-disciplines-configuration.md`,
 `.claude/commands/quick.md`, `.claude/commands/metrics.md`,
 `.claude/hooks/run_build_test.py`, `.claude/hooks/validation_sync_check.py`

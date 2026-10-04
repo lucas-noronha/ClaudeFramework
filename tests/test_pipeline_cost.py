@@ -197,11 +197,14 @@ class TestModeAUnchanged(TempCase):
         repo = self.make_repo("app")
         spec = os.path.join(repo, "docs", "product", "specs", "0001-x.md")
         self.write(spec, "---\ndoc_type: spec\nid: 0001\nstatus: draft\narea: core\n---\n# X\n")
-        self.write(os.path.join(repo, "docs", "decisions", "0008-spec-area-lineage.md"), "# ADR\n")
+        # The project's own ADR 0008 is unrelated to framework ADR 0008:
+        # the index must name the framework one, never link the project's.
+        self.write(os.path.join(repo, "docs", "decisions", "0008-our-own-thing.md"), "# ADR\n")
         self.write(os.path.join(repo, "docs", "product", "requirements-template.md"), "# T\n")
         self.hook(HOOKS, "spec_index.py", {"tool_input": {"file_path": "docs/product/specs/0001-x.md"}}, repo)
         index = self.read(os.path.join(repo, "docs", "product", "specs", "README.md"))
-        self.assertIn("`../../decisions/0008-spec-area-lineage.md`", index)
+        self.assertIn("framework ADR 0008", index)
+        self.assertNotIn("decisions/0008", index)
         self.assertIn("`../requirements-template.md`", index)
         describe = json.loads(self.run_py(os.path.join(HOOKS, "_project_paths.py"), "describe", repo).stdout)
         self.assertEqual(describe["mode"], "A")

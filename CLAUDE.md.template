@@ -15,7 +15,7 @@ non-technical stakeholder needs to validate them and doesn't read
 {{CANONICAL_LANG}} comfortably, `/spec` also generates a
 `.validation-{{STAKEHOLDER_LANG_CODE}}.md` companion for their review.
 If canonical and stakeholder language are the same, delete this split
-entirely — see `docs/decisions/0001-tooling-agents-commands-skills.md`
+entirely — see framework ADR 0001
 for the rationale behind the split existing at all.
 
 ## Decided stack
@@ -108,7 +108,7 @@ overview only when nothing more specific fits.
   needs them (e.g. an org-specific one like Azure DevOps — see
   `docs/workflow/plugin-integrations.md` for a copy-paste example).
 
-Full rationale → `docs/decisions/0001-tooling-agents-commands-skills.md`.
+Full rationale → framework ADR 0001.
 
 ## Conventions for any agent working in this repo
 

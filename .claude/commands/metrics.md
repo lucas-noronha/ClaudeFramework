@@ -6,7 +6,7 @@ Run `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" report`
 and show its tables to the user as they are. The script reads this
 project's own `pipeline-metrics.jsonl`; a routed project has it in its
 subtree, so pass `--project-dir "$CLAUDE_PROJECT_DIR"` and the script
-resolves the rest. See `docs/decisions/0020-proportional-pipeline-cost.md`
+resolves the rest. See framework ADR 0020
 for what each column counts.
 
 Then add at most three lines of reading, never more:

@@ -1,5 +1,5 @@
 """Census engine — keeps architecture docs honest against the code (ADR
-0019, spec 0002 FR-01..FR-04, FR-08).
+0019, framework spec 0002 FR-01..FR-04, FR-08).
 
 Commands (all print JSON; `--project-dir` defaults to CLAUDE_PROJECT_DIR):
 
@@ -472,7 +472,7 @@ def projects_for(args):
 def main(argv=None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    parser = argparse.ArgumentParser(description="Census engine (ADR 0019).")
+    parser = argparse.ArgumentParser(description="Census engine (framework ADR 0019).")
     parser.add_argument("--project-dir")
     parser.add_argument("--all", action="store_true", help="every registered project with census enabled")
     sub = parser.add_subparsers(dest="cmd", required=True)

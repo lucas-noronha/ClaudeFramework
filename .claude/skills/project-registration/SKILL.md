@@ -1,13 +1,13 @@
 ---
 name: project-registration
-description: Resolves where this session's project docs actually live before a pipeline command reads or writes anything, rebinding project-content paths to a registered project's own subtree (ADR 0015 modes B and C), and registers an unregistered project on the spot when the framework runs user-level (ADR 0014 mode C) — one repo, or several in one pass. Invoked explicitly as the first step of /spec, /plan, /tasks, /implement, /review, /adr, /reconcile, /quick and /update-docs — never left to self-trigger.
+description: Resolves where this session's project docs actually live before a pipeline command reads or writes anything, rebinding project-content paths to a registered project's own subtree (framework ADR 0015 modes B and C), and registers an unregistered project on the spot when the framework runs user-level (framework ADR 0014 mode C) — one repo, or several in one pass. Invoked explicitly as the first step of /spec, /plan, /tasks, /implement, /review, /adr, /reconcile, /quick and /update-docs — never left to self-trigger.
 ---
 
-Full rationale → `docs/decisions/0014-setup-framework-adoption-modes.md`
+Full rationale → framework ADR 0014
 (three adoption modes, lazy registration),
-`docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`
+framework ADR 0015
 (one unified `docs/` tree — **read this one if anything below surprises
-you**) and `docs/decisions/0017-user-level-install-mechanics.md` (the
+you**) and framework ADR 0017 (the
 install namespace, `framework.json`, the registration gate). Hooks do the
 same lookup in code via `.claude/hooks/_project_paths.py`. This skill
 runs that same module, so a command and a hook never disagree about
@@ -21,14 +21,14 @@ root, where it would collide with every other project. If you can't
 confirm where this session's project docs live, stop and ask — do not
 write and hope.
 
-## The layout you are resolving against (ADR 0015)
+## The layout you are resolving against (framework ADR 0015)
 
 ```text
 <ai-repo>/  (or the install namespace, e.g. ~/.claude/cfw, in mode C)
   .claude/ or hooks/, scripts/ <- the machinery, and projects.local.json
   docs/                        <- THE SHARED ROOT: constitution-baseline.md,
                                   constitution.md, workflow/, glossary.md,
-                                  product/*-template.md, reference ADRs
+                                  product/*-template.md, decisions/0000-adr-template.md
     <project-name>/            <- ONE PROJECT'S SUBTREE = what the registry points at
       CLAUDE.md
       project-config.json
@@ -48,7 +48,7 @@ and wrong for project content in both B and C.
 ## Step 1 — Probe (one call, always first)
 
 If this file starts with an **Install binding** block (a user-level
-install writes one, ADR 0017), the paths in it are authoritative. Use its
+install writes one, framework ADR 0017), the paths in it are authoritative. Use its
 probe command. Otherwise run:
 
 ```bash
@@ -97,7 +97,7 @@ one report line.
 - [ ] **Project name** — default: the repo's own folder name. It becomes
       `<projects_root>/<name>/`. **Reserved, reject and ask again:**
       `workflow`, `product`, `architecture`, `decisions`, `glossary` —
-      each collides with a folder the shared root owns (ADR 0015).
+      each collides with a folder the shared root owns (framework ADR 0015).
 - [ ] **Build/test command** — offer the detected value as the default:
       `.sln`/`.csproj` → `dotnet test`; a `package.json` `test` script →
       `npm test`; both → the two chained; neither → ask outright.
@@ -119,7 +119,7 @@ python "<scripts_dir>/register_project.py" --repo "$CLAUDE_PROJECT_DIR" \
 It creates, under `<projects_root>/<name>/`: an empty `product/specs/`;
 `architecture/` with the shared templates copied unfilled;
 `decisions/0000-adr-template.md` only (this project's ADRs start at
-0001; ADR 0013); `project-config.json` (build/test command, languages,
+0001; framework ADR 0013); `project-config.json` (build/test command, languages,
 `main_integration_branch` detected from `origin/HEAD`,
 `review_policy: per-task`, census off); and `CLAUDE.md` from the
 template with every value it can know filled in. It writes the routing
@@ -141,7 +141,7 @@ or a different one that needs another name.
 Report in one line ("registered `<name>` → `<subtree>`"), then go to
 step 4 and then on to the command's actual work.
 
-### Bulk registration (spec 0001 FR-11)
+### Bulk registration (framework spec 0001 FR-11)
 
 To register several existing repos in one pass, ask the shared questions
 (languages, and a build/test command only if one fits them all) **once**.
@@ -191,11 +191,13 @@ For every remaining step of this command:
       reasoning, so give it resolved absolute paths.
 - [ ] **Shared material is at `<shared>`, never in the subtree:**
       `requirements-template.md`, `validation-summary-template.md`,
-      `workflow/*`, `glossary.md`, the constitution layers, the
-      framework's reference ADRs. If a file genuinely isn't there, say
+      `workflow/*`, `glossary.md`, the constitution layers. (The
+      framework's own ADRs and specs, cited as "framework ADR NNNN", are
+      never in a project or a shared root: they live in the framework
+      repository's `evolution/`.) If a file genuinely isn't there, say
       so and continue without it — never recreate it in the target repo
       or the subtree.
-- [ ] **Up to three constitution layers** (ADR 0015, ADR 0018), each
+- [ ] **Up to three constitution layers** (framework ADR 0015, framework ADR 0018), each
       adding to and never weakening the one above:
       `<shared>/constitution-baseline.md` (framework baseline, I–V),
       `<shared>/constitution.md` (organization layer), and

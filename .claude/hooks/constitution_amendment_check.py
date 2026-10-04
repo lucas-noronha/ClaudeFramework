@@ -6,7 +6,7 @@ constitution is meant to be amended over the project's life (see its
 own Governance section), so blocking edits would fight legitimate ones;
 only silent, unversioned drift is worth flagging.
 
-Since ADR 0015 there are two layers, and this hook watches both
+Since framework ADR 0015 there are two layers, and this hook watches both
 *independently* — one nudge about whichever file was actually touched:
 
     <root>/docs/constitution.md                  supreme, cross-project
@@ -17,18 +17,18 @@ Since ADR 0015 there are two layers, and this hook watches both
 case fails open below): project constitutions do not live in a git repo
 of their own. Mode A has only the supreme file, at
 `<repo>/docs/constitution.md`, and behaves here exactly as it did before
-ADR 0015.
+framework ADR 0015.
 
-ADR 0018 adds a framework-owned baseline layer above both,
+framework ADR 0018 adds a framework-owned baseline layer above both,
 `<root>/docs/constitution-baseline.md` (Principles I-V). It is replaced
 on every framework upgrade, so any edit to it gets a "you're editing the
 framework's layer" nudge instead of the version check.
 
 Whether a project principle actually *weakens* a supreme one stays a
 semantic judgment `/spec`, `/plan`, `coder`/`quickfix` and `reviewer`
-make while reading both files (ADR 0015 deliberately did not strengthen
+make while reading both files (framework ADR 0015 deliberately did not strengthen
 enforcement here). This hook attempts no contradiction detection — it
-only watches for unversioned drift, exactly as ADR 0007 specified.
+only watches for unversioned drift, exactly as framework ADR 0007 specified.
 """
 import json
 import os
@@ -40,13 +40,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _project_paths import hook_should_run, normalize, read_hook_input  # noqa: E402
 
 CONSTITUTION_FILENAME = "constitution.md"
-# ADR 0018: the framework's own Principles I-V, a third layer above the
-# two ADR 0015 introduced. Framework-owned: replaced on every upgrade.
+# framework ADR 0018: the framework's own Principles I-V, a third layer above the
+# two framework ADR 0015 introduced. Framework-owned: replaced on every upgrade.
 BASELINE_FILENAME = "constitution-baseline.md"
 DOCS_DIRNAME = "docs"
 
 # Shared material sits at the `docs/` root beside the project folders
-# (ADR 0015), so these names can never be a project name — registration
+# (framework ADR 0015), so these names can never be a project name — registration
 # reserves them. `docs/decisions/constitution.md` is therefore some other
 # file that happens to be named that, not a project's constitution.
 RESERVED_DOCS_NAMES = {"workflow", "product", "architecture", "decisions", "glossary"}
@@ -139,7 +139,7 @@ def _committed_copy(abspath: str):
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return
@@ -170,7 +170,7 @@ def main() -> None:
         return
 
     if os.path.basename(abspath) == BASELINE_FILENAME:
-        # ADR 0018: a hand edit here is lost on the next framework upgrade.
+        # framework ADR 0018: a hand edit here is lost on the next framework upgrade.
         # Still nudge-only — the framework repo itself edits this file
         # legitimately, and a hook can't tell the two apart.
         print(json.dumps({

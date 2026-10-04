@@ -10,13 +10,13 @@ the common case costs one check and changes nothing.
 This is the **final, whole-feature** pass — distinct from the
 per-task `reviewer` pass `/implement`'s orchestration mode already runs
 automatically for coder-tier tasks (see
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`). Run this once
+framework ADR 0004). Run this once
 a spec's tasks are all implemented, to catch cross-task integration
 issues a per-task review can't see, check the spec's own "Technical
 plan → Definition of Done" line by line plus the completeness of its
 "## Reconciliation" section (the per-task pass deliberately skips both
 — they're feature-level questions; see
-`docs/decisions/0009-per-task-spec-reconciliation.md`), or any time you
+framework ADR 0009), or any time you
 need to review hand-edited code that never went through `/implement`
 at all.
 
@@ -37,7 +37,7 @@ the user.
 
 If this project's `review_policy` skipped per-task reviews for this
 spec (`final-only`, or `structural-only` on a non-structural spec — see
-`docs/decisions/0020-proportional-pipeline-cost.md`), nothing has written
+framework ADR 0020), nothing has written
 the spec's "## Reconciliation" entries yet. Tell `reviewer` so: in this
 pass it first appends one entry per task and declared `FR-NN`/`AC-NN`,
 in the per-task format, and only then checks completeness. A missing
@@ -51,7 +51,7 @@ If the result is **Approved**:
   own.
 - If the current branch is `task/<spec-short-name>` (this spec is
   running in its own worktree, per
-  `docs/decisions/0005-spec-worktree-lifecycle.md`), explicitly offer —
+  framework ADR 0005), explicitly offer —
   never do it unasked, pushing and opening a PR are both visible to
   others — to push the branch (`git push -u origin
   task/<spec-short-name>`) and open a PR (`gh pr create`, base

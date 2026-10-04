@@ -7,7 +7,7 @@ context_budget: ~400 tokens
 
 # Constitution — framework baseline (Principles I–V)
 
-This is the **baseline layer** of the constitution (ADR 0018). It ships
+This is the **baseline layer** of the constitution (framework ADR 0018). It ships
 with the framework, and every framework upgrade replaces it wholesale.
 **Never edit it in an adopted project.** An organization's or project's
 own non-negotiables go in `constitution.md` beside it, numbered from VI
@@ -22,7 +22,7 @@ the one above:
    (modes B/C), or this project's own layer (mode A). Amended through
    its own Governance section, never replaced by an upgrade.
 3. **`<project-subtree>/constitution.md`** — modes B/C only, optional,
-   one project's additions (ADR 0015).
+   one project's additions (framework ADR 0015).
 
 ## Core principles
 

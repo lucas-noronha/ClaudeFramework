@@ -1,6 +1,6 @@
 """Register one or several existing repos with a multi-project install
 (mode C, or mode B's AI-repo): the deterministic half of the
-`project-registration` skill's step 3 (ADR 0014, ADR 0017; spec 0001
+`project-registration` skill's step 3 (framework ADR 0014, framework ADR 0017; framework spec 0001
 FR-06, FR-09, FR-11).
 
     python register_project.py --repo PATH --name NAME --build-test-cmd CMD \\
@@ -20,6 +20,9 @@ agent to resolve), then adds the routing entry. It refuses — before
 writing anything — on a reserved or unsafe name, an existing subtree
 (unless `--existing-subtree same`, which writes the routing entry only),
 an unparseable registry, or a repo that is already registered.
+`--subtree PATH` routes a repo to an existing folder anywhere instead
+(routing entry only) — how the framework repository points its own
+pipeline at `evolution/`.
 
 Bulk mode (FR-11) takes the shared answers once, in a plan file:
 
@@ -75,7 +78,7 @@ def plan_project(spec: dict, shared: dict, info: dict, existing: str, today: str
         return None, f"{repo}: not a directory"
     name = spec.get("name") or os.path.basename(repo)
     if name.lower() in RESERVED_NAMES:
-        return None, f"{repo}: name {name!r} collides with the shared root's own `{name.lower()}` folder (ADR 0015) — pick another"
+        return None, f"{repo}: name {name!r} collides with the shared root's own `{name.lower()}` folder (framework ADR 0015) — pick another"
     if not NAME_PATTERN.match(name):
         return None, f"{repo}: name {name!r} isn't a safe folder name"
 
@@ -84,6 +87,15 @@ def plan_project(spec: dict, shared: dict, info: dict, existing: str, today: str
         return None, f"{repo}: already registered → {repo_info['subtree']}"
 
     projects_root = info["projects_root"]
+    if spec.get("subtree"):
+        subtree = normalize(os.path.abspath(spec["subtree"]))
+        if not os.path.isdir(subtree):
+            return None, f"{repo}: --subtree {subtree} is not an existing folder"
+        return {
+            "repo": repo, "name": name, "subtree": subtree, "routing_only": True,
+            "build_test_cmd": None, "main_integration_branch": None,
+            "writes": {}, "claude_md_placeholders_left": [],
+        }, None
     subtree = normalize(os.path.join(projects_root, name))
     routing_only = False
     if os.path.exists(subtree):
@@ -168,6 +180,7 @@ def main(argv=None) -> int:
     parser.add_argument("--census-extractor")
     parser.add_argument("--plan", help="bulk plan file (see module docstring)")
     parser.add_argument("--existing-subtree", choices=["abort", "same"], default="abort")
+    parser.add_argument("--subtree", help="route --repo to this existing folder (routing entry only)")
     parser.add_argument("--today", help=argparse.SUPPRESS)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
@@ -180,7 +193,7 @@ def main(argv=None) -> int:
     elif args.repo:
         shared = {}
         projects = [{
-            "repo": args.repo, "name": args.name, "build_test_cmd": args.build_test_cmd,
+            "repo": args.repo, "name": args.name, "subtree": args.subtree, "build_test_cmd": args.build_test_cmd,
             "canonical_lang": args.canonical_lang, "stakeholder_lang": args.stakeholder_lang,
             "stakeholder_lang_code": args.stakeholder_lang_code, "main_integration_branch": args.main_branch,
             "census_extractor": args.census_extractor,

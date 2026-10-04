@@ -111,9 +111,9 @@ instead of enforced errors.
 
 ## References
 
-`docs/product/specs/0002-living-architecture-docs.md`,
+`evolution/product/specs/0002-living-architecture-docs.md`,
 `docs/workflow/living-architecture-docs.md`,
-`docs/decisions/0006-architecture-anamnesis.md`,
-`docs/decisions/0009-per-task-spec-reconciliation.md`,
-`docs/decisions/0012-on-demand-reconciliation-sweep.md`,
+`evolution/decisions/0006-architecture-anamnesis.md`,
+`evolution/decisions/0009-per-task-spec-reconciliation.md`,
+`evolution/decisions/0012-on-demand-reconciliation-sweep.md`,
 `.claude/scripts/census.py`, `.claude/commands/update-docs.md`

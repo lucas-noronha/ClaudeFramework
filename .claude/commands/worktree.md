@@ -11,7 +11,7 @@ another spec in progress. Follow this order, don't skip a step:
    (`task/<short-name>`) and the spec filename match exactly.
    `/implement`'s orchestration mode looks up the worktree by that
    exact match (see
-   `docs/decisions/0005-spec-worktree-lifecycle.md`); a mismatched name
+   framework ADR 0005); a mismatched name
    means it won't find it next time.
 2. Run `git fetch origin {{MAIN_INTEGRATION_BRANCH}}` — the source of
    truth is always the remote, never the local state without
@@ -41,7 +41,7 @@ Isolation stops at the spec — a single task never gets a worktree of
 its own, no matter how large. Every task in a spec's `/implement` sweep
 shares this one worktree, isolated from its siblings only at the
 subagent-context level (see
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`) — that's
+framework ADR 0004) — that's
 enough, and avoids a session hand-off per task.
 
 Don't use subagent `isolation: worktree` or the automatic `--worktree`

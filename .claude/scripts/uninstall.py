@@ -1,5 +1,5 @@
 """Remove a user-level install of this framework — exactly what its
-`manifest.json` says it created, nothing else (ADR 0017, spec 0001 FR-02).
+`manifest.json` says it created, nothing else (framework ADR 0017, framework spec 0001 FR-02).
 
     python <namespace>/scripts/uninstall.py                    # dry run
     python <namespace>/scripts/uninstall.py --apply            # remove

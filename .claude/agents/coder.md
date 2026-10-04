@@ -17,8 +17,8 @@ the task as written would need to violate one, stop and flag it instead
 of silently implementing the violation.
 
 **The constitution has up to three layers, and all of them bind you**
-(see `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`
-and `docs/decisions/0018-constitution-baseline-layer.md`):
+(see framework ADR 0015
+and framework ADR 0018):
 
 - The **supreme** layer, at the shared `docs/` root — a non-negotiable
   floor for every project. It is two files: `docs/constitution-baseline.md`

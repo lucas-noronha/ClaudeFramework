@@ -17,7 +17,7 @@ structural-sized work at this model tier.
   alongside it.
 - Run the local build and tests before considering the task done (the
   project's hook reinforces this automatically after every edit). You
-  don't carry the `Skill` tool (per ADR 0002, kept deliberately cheap),
+  don't carry the `Skill` tool (per framework ADR 0002, kept deliberately cheap),
   so apply `plugin-awareness`'s absorbed `verification-before-completion`
   discipline directly rather than invoking it: read the actual command
   output before reporting the fix done, don't infer success from the
@@ -29,7 +29,7 @@ structural-sized work at this model tier.
   for a one-line change (e.g. never hardcode a secret while "just"
   fixing a typo nearby). There can be up to three layers, and all
   apply: the supreme pair at the shared `docs/` root —
-  `docs/constitution-baseline.md` (framework Principles I–V, ADR 0018)
+  `docs/constitution-baseline.md` (framework Principles I–V, framework ADR 0018)
   and `docs/constitution.md` (the floor's organization layer) — plus the
   project's own
   `<project-subtree>/constitution.md` when your caller handed you
@@ -37,7 +37,7 @@ structural-sized work at this model tier.
   exists — it only ever *adds* principles, it never relaxes a supreme
   one. In mode A (no registration, the repo's own `docs/`) there is no
   project layer, just the supreme pair (or a single
-  `docs/constitution.md` in a project older than ADR 0018). Read
+  `docs/constitution.md` in a project older than framework ADR 0018). Read
   whichever files your caller's paths actually point at; don't go
   hunting for one you weren't pointed at, and don't resolve project
   registration yourself.

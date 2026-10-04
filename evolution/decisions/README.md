@@ -28,3 +28,4 @@ format.
 | 0018 | [The constitution gains a framework-owned baseline layer](0018-constitution-baseline-layer.md) | proposed | — | — |
 | 0019 | [Architecture docs get a lifecycle, routing frontmatter and a census engine](0019-living-architecture-docs.md) | proposed | — | — |
 | 0020 | [A fast lane, cheaper gates and a per-project review policy](0020-proportional-pipeline-cost.md) | proposed | — | — |
+| 0021 | [The framework's own specs and ADRs live in `evolution/`, outside the shipped skeleton](0021-separate-evolution-from-skeleton.md) | proposed | — | — |

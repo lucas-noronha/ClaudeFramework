@@ -256,6 +256,18 @@ class TestGateAndRegistration(InstallCase):
         registry = json.loads(self.read(os.path.join(self.ns, "projects.local.json")))
         self.assertEqual(len(registry), 2)
 
+    def test_registration_with_explicit_subtree_routes_only(self):
+        repo = self.make_repo("framework", {"README.md": "x\n"})
+        subtree = os.path.join(repo, "evolution")
+        self.write(os.path.join(subtree, "project-config.json"), '{"build_test_cmd": "true"}')
+        before = self.snapshot(subtree)
+        report = json.loads(self.run_py(os.path.join(self.ns, "scripts", "register_project.py"), "--repo", repo,
+                                        "--subtree", subtree, "--apply").stdout)
+        self.assertEqual((report["errors"], report["projects"][0]["routing_only"]), ([], True))
+        self.assertEqual(before, self.snapshot(subtree))
+        describe = json.loads(self.run_py(os.path.join(self.hooks, "_project_paths.py"), "describe", repo).stdout)
+        self.assertEqual(describe["subtree"], posix(subtree))
+
     def test_registration_refuses_reserved_name(self):
         repo = self.make_repo("workflow", {"Orders.sln": ""})
         result = self.run_py(os.path.join(self.ns, "scripts", "register_project.py"), "--repo", repo, "--apply", check=False)

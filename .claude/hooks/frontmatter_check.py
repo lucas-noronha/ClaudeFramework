@@ -5,7 +5,7 @@ falls outside the cost-aware indexing this framework relies on
 (CLAUDE.md's index, context_budget_check.py, the "load the narrowest
 doc" discipline) — better to flag it once than have it go unnoticed.
 
-Architecture docs get one more nudge (ADR 0019, spec 0002 FR-05): a
+Architecture docs get one more nudge (framework ADR 0019, framework spec 0002 FR-05): a
 missing routing summary key — the question the doc answers, which index
 tables copy verbatim. The key names default to `resumo`/`naoResponde`
 and are configurable per project (`project-config.json` →
@@ -32,7 +32,7 @@ def routing_keys(project: str) -> dict:
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return

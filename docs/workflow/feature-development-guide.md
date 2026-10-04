@@ -3,7 +3,7 @@ doc_type: workflow
 scope: feature-development-guide
 status: active
 last_updated: {{DATE}}
-related: [ai-first-development.md, parallel-work.md, model-tiering.md, governance-and-observability.md, living-architecture-docs.md, ../decisions/0020-proportional-pipeline-cost.md, ../architecture/module-structure.md, ../architecture/frontend.md, ../decisions/0004-plan-tasks-implement-rebalance.md]
+related: [ai-first-development.md, parallel-work.md, model-tiering.md, governance-and-observability.md, living-architecture-docs.md, ../architecture/module-structure.md, ../architecture/frontend.md]
 context_budget: ~1600 tokens
 ---
 
@@ -43,7 +43,7 @@ whether this spec already has its own worktree (branch
 `task/<short-name>`) and, if not, asks whether to create one before
 starting — worth it if you want to run other specs' sweeps at the same
 time, or a clean, spec-scoped diff and PR at the end (see
-`../decisions/0005-spec-worktree-lifecycle.md`). Say yes and it creates
+framework ADR 0005). Say yes and it creates
 the worktree, then stops so you can open a new session there and
 re-run the same command — this framework's hooks only work correctly
 in the session that actually started in that directory. Say no (or
@@ -57,7 +57,7 @@ call — so a wave of three independent tasks means three isolated
 subagent contexts, dispatched in parallel, not one subagent working
 through three tasks in the same context window. That isolation, not
 manual pacing, is what keeps a sweep from polluting context; see
-`../decisions/0004-plan-tasks-implement-rebalance.md`.
+framework ADR 0004.
 
 Use `/implement <task number or description>` instead when you want
 just that one task — same routing (`quickfix`/`coder`), same
@@ -73,7 +73,7 @@ If the change doesn't deserve a spec, describe it instead:
 ```
 
 `/quick` classifies the request with `triage`, no spec required
-(`../decisions/0020-proportional-pipeline-cost.md`):
+(framework ADR 0020):
 
 - **trivial** → `quickfix` fixes it directly; the build/test gate runs;
   no spec file, no review. You get the tier and the gate result back.
@@ -116,7 +116,7 @@ flight.
 
 `.claude/settings.example.json` includes a hook that runs your
 project's build + tests automatically whenever a code-writing subagent
-finishes (read-only subagents skip it, ADR 0020). `/setup-framework`
+finishes (read-only subagents skip it, framework ADR 0020). `/setup-framework`
 does these steps for you; by hand:
 
 1. Rename it to `.claude/settings.json`.

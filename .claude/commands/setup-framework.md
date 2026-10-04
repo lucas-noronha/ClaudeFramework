@@ -25,7 +25,7 @@ anything into it.
 
 Goal: settle the one thing that decides *where this framework's
 machinery physically lives*, before anything writes a file. Per
-`docs/decisions/0014-setup-framework-adoption-modes.md` the three
+framework ADR 0014 the three
 shapes below are mutually exclusive, whole-repo commitments — not
 optional add-ons to each other like Domains 2-4 — and running two of
 them against the same repo is exactly the failure this question exists
@@ -72,8 +72,8 @@ layout. Say that out loud when you ask.
      repo gets three never-committed links (`.claude`, `docs`,
      `CLAUDE.md`) pointing back here. One AI-repo backs any number of
      target repos through per-project subtrees nested inside one
-     shared `docs/` tree, at `docs/<name>/` (ADR 0013, layout per
-     ADR 0015).
+     shared `docs/` tree, at `docs/<name>/` (framework ADR 0013, layout per
+     framework ADR 0015).
      *Cost:* the links are per machine and per clone — every
      developer, and every fresh checkout, must re-run Domain 5 before
      hooks route correctly; and both repos must sit on one filesystem
@@ -93,7 +93,7 @@ layout. Say that out loud when you ask.
      spec and ADR sit outside git unless you point the projects root
      at a folder you already version or sync. A relocated
      `CLAUDE_CONFIG_DIR` also puts `~/.claude` out of Claude Code's
-     reach, which mode C cannot detect from inside a hook (ADR 0014).
+     reach, which mode C cannot detect from inside a hook (framework ADR 0014).
      *Pick it when:* you want one setup covering every repo you touch
      on this machine, with no per-repo step at all.
 
@@ -127,14 +127,10 @@ template/example files that are ready to become the real thing.
      (`{{HOOKS_DIR}}`, `{{PYTHON}}`, `{{PROJECTS_ROOT_PERMISSION_PATH}}`)
      — a template only Domain 5 and the user-level installer resolve,
      never Domain 1.
-   - The placeholder *names* quoted in the bodies of this framework's
-     own ADRs (`docs/decisions/0001-*.md` onward) — they discuss
-     placeholders, they aren't slots. Only their frontmatter `{{DATE}}`
-     is filled (step 3).
 
    The user-level installer (Domain 6) checks its own output against
    this same list and refuses to install if anything else survives
-   (spec 0001 AC-04): there, the template sources a registration copies
+   (framework spec 0001 AC-04): there, the template sources a registration copies
    per project (`CLAUDE.md.template`, `architecture/*.md.template`,
    `0000-adr-template.md`) keep their placeholders too.
 2. Resolve each remaining placeholder's value, detecting from the
@@ -182,13 +178,11 @@ template/example files that are ready to become the real thing.
      don't apply, so offer that as the default.
    Batch these into a small number of `AskUserQuestion` calls — don't
    ask one at a time for a dozen fields.
-3. `{{DATE}}` — today's date, everywhere it appears (including inside
-   `docs/decisions/0001-*.md` and `0002-*.md`'s own frontmatter — safe
-   before any hook is wired up; **never** inside `0000-adr-template.md`,
-   per the exclusion above).
+3. `{{DATE}}` — today's date, everywhere it appears — **never** inside
+   `0000-adr-template.md`, per the exclusion above.
 4. Apply every resolved value across **all** files it appears in
    (e.g. the same `{{PROJECT_NAME}}` in `CLAUDE.md.template` and in
-   `docs/decisions/0001-*.md`) — a value filled in one place and left
+   `docs/architecture/overview.md.template`) — a value filled in one place and left
    as a literal placeholder in another is worse than not filling it at
    all, since it looks resolved at a glance.
 5. Rename the files that are now ready to stop being templates (moving
@@ -216,7 +210,7 @@ template/example files that are ready to become the real thing.
    still matches outside the excluded files, that's a bug in this
    domain, not something to leave for the user to find later.
 8. Write `.claude/project-config.json` — mode A's machine-readable
-   project config (ADR 0020). It's committed, like a mode B/C subtree's
+   project config (framework ADR 0020). It's committed, like a mode B/C subtree's
    `project-config.json`, and it's what the hooks and scripts read here:
    the build/test gate (`run_build_test.py`, which `settings.json` now
    calls instead of holding the command literally), the validation-
@@ -253,7 +247,7 @@ template/example files that are ready to become the real thing.
    missing Core plugins, each with the one-line "what it gives you"
    from the catalog table — let the user pick any subset, or none. If
    `superpowers` is among the missing ones, list it first: per
-   `docs/decisions/0003-superpowers-sdd-wrapping.md` it now backs a
+   framework ADR 0003 it now backs a
    complementary pass across nearly the whole SDD lifecycle (`/spec`,
    `/tasks`, `coder`/`quickfix`, `/review`, `/worktree`), not just
    `coder` — worth calling out even to a user who'd otherwise skip the
@@ -330,7 +324,7 @@ bug in it, not an acceptable leftover.
 Goal: give the two architecture blank slots a real, project-specific
 starting draft when there's existing code to describe — never a
 finished document, never a guess presented as settled. See
-`docs/decisions/0006-architecture-anamnesis.md` for why this is safe
+framework ADR 0006 for why this is safe
 where an earlier version of this framework's guessed-architecture
 approach wasn't: the earlier one shipped one fixed opinion as this
 framework's own default; this one describes *this* project's own code
@@ -364,7 +358,7 @@ and stays a draft until a human reads it.
    `frontend.md`'s "Layout" / "Dependency rules" / "Where new code
    goes" sections from it and rename `.template` → `.md` (move the
    content, don't leave the template file behind — same convention as
-   Domain 1). Set its frontmatter `status: draft` (ADR 0019: `coder`
+   Domain 1). Set its frontmatter `status: draft` (framework ADR 0019: `coder`
    and `reviewer` treat a draft's rules as advisory until
    `/update-docs promote` verifies them against code). Prepend this
    exact banner right after the frontmatter, before the first heading:
@@ -404,14 +398,14 @@ from step 10 has to live, since that's the only mechanism here that
 doesn't depend on any link already existing.
 
 **Every linked project always gets its own `docs/<name>/` subtree —
-there is no "just one project" shortcut to choose.** Per ADR 0013 a
+there is no "just one project" shortcut to choose.** Per framework ADR 0013 a
 single project is simply N=1 in the same structure, so a simpler
 one-off path would be a second code path maintained for no behavioural
 gain, and linking a second target repo later would then need a
 migration. Don't ask a single-vs-multi question anywhere in this
 domain.
 
-**There is no `projects/` folder** (ADR 0015 replaced ADR 0013's
+**There is no `projects/` folder** (framework ADR 0015 replaced framework ADR 0013's
 two-tree layout). This AI-repo has exactly one `docs/` tree: shared
 material at its root, each linked project one level down inside it.
 
@@ -419,7 +413,7 @@ material at its root, each linked project one level down inside it.
 <ai-repo>/
   .claude/                     <- shared machinery, one copy, every project
   docs/                        <- THE shared root; the target repo's `docs` link points here
-    constitution.md            <- supreme, cross-project (ADR 0007/0015)
+    constitution.md            <- supreme, cross-project (framework ADR 0007/0015)
     workflow/                  <- shared
     glossary.md                <- shared
     product/requirements-template.md, validation-summary-template.md
@@ -520,9 +514,11 @@ and why the three links themselves still need none.
        4's drafting is mode A's flow, not this one's).
      - `docs/<name>/decisions/0000-adr-template.md` — copied from the
        shared `docs/decisions/0000-adr-template.md`, that file only,
-       verbatim with its own `{{DATE}}` left literal. Per ADR
-       0013 each project's ADR numbering starts fresh at 0001; this
-       framework's own ADRs stay in the shared `docs/decisions/`.
+       verbatim with its own `{{DATE}}` left literal. Per framework ADR
+       0013 each project's ADR numbering starts fresh at 0001. The
+       framework's own ADRs aren't part of the skeleton at all: they live
+       in the framework repository's `evolution/decisions/`, outside
+       `docs/`, so no project ever receives them.
      - `docs/<name>/CLAUDE.md` — from `CLAUDE.md.template`, with this
        project's placeholders resolved using Domain 1 step 2's
        detect-then-confirm pattern run against the **target** repo, not
@@ -530,7 +526,7 @@ and why the three links themselves still need none.
      - **No `constitution.md` here.** The supreme
        `docs/constitution.md` at the shared root already binds this
        project; `docs/<name>/constitution.md` is purely additive and
-       project-owned (ADR 0015), so it is created only if and when that
+       project-owned (framework ADR 0015), so it is created only if and when that
        project actually writes its own principles. Don't pre-create an
        empty stub — a stub file reads as "this project has a
        constitution" to every stage that checks for one. Say in the
@@ -539,21 +535,21 @@ and why the three links themselves still need none.
        the `product/` templates and `constitution.md` stay at the
        shared root and are reachable from the target repo through the
        `docs` link in step 6 — that is the whole reason the link points
-       at the root rather than at this subtree (ADR 0015). Copying them
-       per project is exactly the drift ADR 0015 rejected.
+       at the root rather than at this subtree (framework ADR 0015). Copying them
+       per project is exactly the drift framework ADR 0015 rejected.
 6. For each of `.claude`, `docs`, and `CLAUDE.md` — the same three
    artifacts Domain 1 would otherwise copy into the target repo's own
    root — check `<target repo>/<item>`. Each points at a different
    place inside this AI-repo, using the relative path from step 4:
    - `.claude` → `<relative path>/.claude` — the **one shared**
      `.claude/`, identical for every linked project, with no
-     per-project indirection anywhere (ADR 0013).
+     per-project indirection anywhere (framework ADR 0013).
    - `docs` → `<relative path>/docs` — the **shared root**, not this
      project's subtree. That is what keeps `docs/workflow/...`,
      `docs/constitution.md`, `docs/glossary.md` and
      `docs/product/requirements-template.md` reachable from the target
      repo at the exact paths every agent and doc in this framework
-     cites (ADR 0015). This project's own content sits one level down,
+     cites (framework ADR 0015). This project's own content sits one level down,
      at `docs/<name>/`, and is reached by resolved absolute path, not
      relatively — see the note above step 1.
    - `CLAUDE.md` → `<relative path>/docs/<name>/CLAUDE.md`
@@ -588,13 +584,13 @@ and why the three links themselves still need none.
      reached by absolute path regardless.
 7. **Routing entry** — do this **every time** this domain runs for a
    target repo, re-links included. It's per-machine state, gitignored
-   by design (ADR 0013), so a fresh clone of this AI-repo never carries
+   by design (framework ADR 0013), so a fresh clone of this AI-repo never carries
    it and the hooks can't route until it's written.
    - File: `<ai-repo>/.claude/projects.local.json`. If it doesn't
      exist, create it containing exactly
      `{"projects_root": "<absolute path to <ai-repo>/docs>"}` — the
      shared root itself, since that is where per-project subtrees are
-     created in this mode (ADR 0015).
+     created in this mode (framework ADR 0015).
    - Then set one key in it: this machine's absolute
      `CLAUDE_PROJECT_DIR` for the target repo (normalized — forward
      slashes, no trailing slash, the same normalization every
@@ -613,7 +609,7 @@ and why the three links themselves still need none.
    - Confirm the write with `AskUserQuestion`, showing the exact
      key/value pair, same as every other write in this command.
 8. **`docs/<name>/project-config.json`** — the committed,
-   per-project half of ADR 0013's split. Unlike step 7 this is *not*
+   per-project half of framework ADR 0013's split. Unlike step 7 this is *not*
    rewritten on every run: it holds stable, team-relevant values, and
    its git history is what shows when a project was attached or
    reconfigured.
@@ -646,8 +642,8 @@ and why the three links themselves still need none.
      ```
 
      `main_integration_branch` is what `/worktree`, `/implement` and
-     `/review` use for the integration branch at runtime (spec 0001
-     FR-06); `review_policy` and `census` are ADR 0020's and ADR 0019's
+     `/review` use for the integration branch at runtime (framework spec 0001
+     FR-06); `review_policy` and `census` are framework ADR 0020's and framework ADR 0019's
      per-project switches, defaults shown.
 
      No absolute paths and no per-machine data ever go in this file —
@@ -672,7 +668,7 @@ and why the three links themselves still need none.
      `.claude/settings.multi-project.json.example` — *not*
      `settings.example.json`, which bakes one project's build/test
      command and language values into static text, impossible for a
-     file shared by several projects (ADR 0013). Resolve its three
+     file shared by several projects (framework ADR 0013). Resolve its three
      placeholders:
      - `{{HOOKS_DIR}}` → `${CLAUDE_PROJECT_DIR:-.}/.claude/hooks`, which
        is correct here precisely because the target repo's `.claude` is
@@ -681,7 +677,7 @@ and why the three links themselves still need none.
      - `{{PYTHON}}` → `python` (or `python3` where only that exists).
      - `{{PROJECTS_ROOT_PERMISSION_PATH}}` → `<ai-repo>/docs` in Claude
        Code's absolute permission form: `//` plus a POSIX path, a Windows
-       drive written `//c/...` (spec 0001 FR-08). A relative rule can't
+       drive written `//c/...` (framework spec 0001 FR-08). A relative rule can't
        match the absolute subtree paths project content is written to.
        The template's rule is `Edit(...)` on purpose: Claude Code never
        uses `Write(path)` rules for file permission checks, and `Edit`
@@ -758,7 +754,7 @@ command in this framework already expects — a symlink/junction/hard
 link is transparent to normal file reads, so nothing anywhere else
 needs to know linking is even involved, and there's no "which CLAUDE.md
 is the framework's" ambiguity to resolve, since there's exactly one
-reachable at that path once step 6 has run. (Since ADR 0015 that
+reachable at that path once step 6 has run. (Since framework ADR 0015 that
 transparency covers *shared* material only: the `docs` link resolves
 `docs/workflow/...` and `docs/constitution.md` correctly, while this
 project's own content needs the resolved `docs/<name>/...` path the
@@ -771,7 +767,7 @@ track something already derivable from the filesystem.
 What is *not* derivable is which project a **shared** `.claude/`
 belongs to for the current session, and that project's build/test
 command and language split — one `settings.json` serves every linked
-project, so neither can be baked into it. ADR 0013 answers both with
+project, so neither can be baked into it. framework ADR 0013 answers both with
 the two files above, split by lifecycle: step 7's
 `.claude/projects.local.json` is per-machine routing (gitignored,
 absolute paths, regenerated by this domain on each machine), and step
@@ -815,19 +811,20 @@ footprint at all.
 
 This domain runs **once per machine** (and again to upgrade), and it
 configures the machine, not a project. Projects register lazily, the
-first time a pipeline command needs one (ADR 0014), or in bulk at the
+first time a pipeline command needs one (framework ADR 0014), or in bulk at the
 end of this domain.
 
 **All the mechanics live in one script**, `.claude/scripts/install_user_level.py`,
-run from this repository (ADR 0017, spec 0001). This domain asks the
+run from this repository (framework ADR 0017, framework spec 0001). This domain asks the
 questions, shows the script's dry run, and only then lets it write.
 The script is what guarantees, mechanically rather than by instruction:
 
 - a **namespace prefix** (default `cfw`): agents, commands and skills
   land as `cfw-coder`, `/cfw-spec`, `cfw-project-registration`, so they
   can't collide with a user's own `spec`/`plan`; hooks, scripts, the
-  registry, templates and the shared `docs/` root (with this
-  framework's reference ADRs) live in `~/.claude/<prefix>/`. Every
+  registry, templates and the shared `docs/` root live in
+  `~/.claude/<prefix>/`. The framework's own specs and ADRs
+  (`evolution/`) are never installed. Every
   cross-reference in the installed text is rewritten consistently;
 - **absolute hook paths** in `settings.json` — never a quoted `~`, which
   bash doesn't expand (D1) — and a spec-write permission generated
@@ -852,7 +849,7 @@ The script is what guarantees, mechanically rather than by instruction:
 - the **constitution baseline** (`constitution-baseline.md`) is
   replaced on every upgrade, while the organization layer
   (`constitution.md`) and `glossary.md` are created once and never
-  overwritten (ADR 0018).
+  overwritten (framework ADR 0018).
 
 There is **no Domain 1 prerequisite** (D8). The installer reads the raw
 skeleton, never installs a `*.py.example` (`auto_format`,
@@ -870,7 +867,7 @@ project declares in its own config.
    - **Projects root** — where each registered project's `<name>/`
      subtree is created:
      - **`~/.claude/<prefix>/docs/`, the default** — nests projects in
-       the shared root exactly as in mode B (ADR 0015). **It sits outside
+       the shared root exactly as in mode B (framework ADR 0015). **It sits outside
        any repository you'd think to version**, so a machine loss takes
        every spec and ADR with it. Say this when offering it.
      - **Any folder you already version or sync** — removes that risk,
@@ -887,7 +884,7 @@ project declares in its own config.
    Relay that verbatim and stop until the user resolves it.
 4. **Confirm** (`AskUserQuestion`), then run the same command with
    `--apply`.
-5. **Optional — register existing repos now** (spec 0001 FR-11). Ask
+5. **Optional — register existing repos now** (framework spec 0001 FR-11). Ask
    whether to register several existing repos in one pass instead of
    lazily. If yes, follow the installed `<prefix>-project-registration`
    skill's "Bulk registration" section: shared answers once, one plan

@@ -68,9 +68,9 @@ has to remember to edit the frontmatter by hand:
    the constitution, if present — flag a conflict the same way, don't
    plan around it silently. **There can be two of them, and you check
    the approach against both whenever both exist** (see
-   `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
+   framework ADR 0015):
    the supreme layer at the **shared** `docs/` root —
-     `docs/constitution-baseline.md` plus `docs/constitution.md` (ADR 0018) —
+     `docs/constitution-baseline.md` plus `docs/constitution.md` (framework ADR 0018) —
    (always, non-negotiable floor — it is shared material, so
    `project-registration`'s step 4 tells you where to read it from),
    plus `<project-subtree>/constitution.md` **if that project has one**

@@ -22,7 +22,7 @@ HANDOFF_FILENAME = "session-handoff.md"
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return
@@ -47,7 +47,7 @@ def main() -> None:
 
     # Per-project state, not `.claude/` machinery: with a shared
     # `.claude/` this would otherwise be one physical file for every
-    # target repo (ADR 0013), so it follows the project, not the config
+    # target repo (framework ADR 0013), so it follows the project, not the config
     # directory. session_brief.py reads back from the same resolution.
     with open(state_file_path(project, HANDOFF_FILENAME), "w", encoding="utf-8") as f:
         f.write(content)

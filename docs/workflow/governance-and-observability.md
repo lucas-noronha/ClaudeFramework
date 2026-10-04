@@ -3,7 +3,7 @@ doc_type: workflow
 scope: governance-and-observability
 status: active
 last_updated: {{DATE}}
-related: [../constitution.md, ../product/requirements-template.md, ../decisions/0007-constitution-document.md, ../decisions/0008-spec-area-lineage.md, ../decisions/0009-per-task-spec-reconciliation.md, ../decisions/0010-constitution-technical-enforcement.md, ../decisions/0011-pipeline-metrics.md, ../decisions/0012-on-demand-reconciliation-sweep.md]
+related: [../constitution.md, ../product/requirements-template.md]
 context_budget: ~950 tokens
 ---
 
@@ -18,8 +18,8 @@ own ADR, linked below, not repeated here.
 ## 1. The constitution — supreme, versioned principles
 
 Non-negotiable principles that `/spec`, `/plan`, `coder`/`quickfix`, and
-`reviewer` all check against — see `../decisions/0007-constitution-document.md`.
-Since `../decisions/0018-constitution-baseline-layer.md` they come in
+`reviewer` all check against — see framework ADR 0007.
+Since framework ADR 0018 they come in
 layers by owner: `../constitution-baseline.md` (the framework's I–V:
 secrets, logging, input validation, least privilege, dependency
 vetting — replaced on every framework upgrade, never edited in a
@@ -30,7 +30,7 @@ It's the one exception to this framework shipping no default content:
 security hygiene is close to universal, unlike architecture.
 
 It's **checked** by every agent's own judgment, and separately **given
-technical teeth** (`../decisions/0010-constitution-technical-enforcement.md`)
+technical teeth** (framework ADR 0010)
 so a violation doesn't only depend on an agent remembering to look:
 
 - `secret_leak_guard.py` blocks a write matching a high-confidence
@@ -53,7 +53,7 @@ nudges, never blocks, if you forget the version bump.
 Every spec now carries `area` and `relates_to` in its own frontmatter,
 set by `/spec` itself by reading `docs/product/specs/README.md` before
 drafting — never something you declare by hand
-(`../decisions/0008-spec-area-lineage.md`). `spec_index.py`'s table is
+(framework ADR 0008). `spec_index.py`'s table is
 sorted/grouped by area, so opening it shows you a new spec's siblings
 at a glance. If two areas end up meaning the same thing (a naming
 drift over time — `/spec` makes a per-run judgment call, not a
@@ -67,13 +67,13 @@ Two mechanisms, not one, covering two different moments:
 - **Per-task, automatic, inside `/implement`**: after each coder-tier
   task's review, `reviewer` appends a line per `FR-NN`/`AC-NN` the task
   declared to the spec's own "## Reconciliation" section — matches
-  spec, or diverged and why (`../decisions/0009-per-task-spec-reconciliation.md`).
+  spec, or diverged and why (framework ADR 0009).
   `/review`'s final pass checks every requirement has at least one
   entry before approving.
 - **On-demand, any time, via `/reconcile <spec path>`**: for a spec
   that's been `implemented` for a while and you want to know if later
   work quietly broke something it used to satisfy
-  (`../decisions/0012-on-demand-reconciliation-sweep.md`). Delegates to
+  (framework ADR 0012). Delegates to
   `reviewer`'s **sweep scope** — no diff, no file list, checks current
   code state against the spec's requirements, appends a dated
   `### Sweep — {{DATE}}` block. Run it periodically on a
@@ -91,14 +91,14 @@ four event types as the pipeline runs: `spec_created`,
 `spec_implemented` (together give you `draft`→`implemented` elapsed
 time per spec), `reconciliation_snapshot` (current matches/diverged/
 out-of-scope counts), and `reviewer_verdict` (Approved/Returned).
-Since `../decisions/0020-proportional-pipeline-cost.md` it also gets
+Since framework ADR 0020 it also gets
 `subagent_dispatched`, `gate_run` (with exit code), and the
 `feature_started`/`feature_finished` markers `/implement` and `/quick`
 write around each feature. `/metrics` turns those into a per-feature
 table — subagents, gate runs and failures, reviewer verdicts, rework —
 with the fast lane and the full path side by side, so `review_policy`
 gets chosen from data. For anything else, read the log with `jq`
-(`../decisions/0011-pipeline-metrics.md`).
+(framework ADR 0011).
 
 `reviewer_verdict` has a real, documented gap: it depends on your
 Claude Code version's subagent-dispatch tool being named `Task` or

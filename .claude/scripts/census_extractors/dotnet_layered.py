@@ -1,4 +1,4 @@
-"""`dotnet-layered` census extractor (ADR 0019, spec 0002 FR-01).
+"""`dotnet-layered` census extractor (framework ADR 0019, framework spec 0002 FR-01).
 
 Inventories, from the C# files at the integration ref:
 

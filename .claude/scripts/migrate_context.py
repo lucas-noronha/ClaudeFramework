@@ -1,5 +1,5 @@
 """Import an existing documentation base into a project subtree laid out
-per ADR 0015, without touching the source (ADR 0017, spec 0001 FR-12).
+per framework ADR 0015, without touching the source (framework ADR 0017, framework spec 0001 FR-12).
 
     python migrate_context.py --source OLD_DOCS --dest SUBTREE \\
         [--map adr=decisions --map notes/arch=architecture ...] \\
@@ -269,7 +269,7 @@ def has_required_keys(text: str) -> bool:
 def main(argv=None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    parser = argparse.ArgumentParser(description="Import an existing doc base into an ADR 0015 project subtree.")
+    parser = argparse.ArgumentParser(description="Import an existing doc base into a framework ADR 0015 project subtree.")
     parser.add_argument("--source", required=True)
     parser.add_argument("--dest", required=True)
     parser.add_argument("--map", action="append", default=[], help="OLD=NEW folder prefix mapping (repeatable)")

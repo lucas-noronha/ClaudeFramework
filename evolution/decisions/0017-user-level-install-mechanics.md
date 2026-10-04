@@ -18,7 +18,7 @@ three upfront modes, lazy registration — stands unchanged.
 
 Mode C was first used for real on 2026-09-30, on a Windows machine with
 personal `~/.claude` commands and five .NET repos
-(`docs/product/specs/0001-mode-c-hardening.md`). Domain 6, as written,
+(`evolution/product/specs/0001-mode-c-hardening.md`). Domain 6, as written,
 produced a broken install that only worked after hand-fixes to the
 installed copy: hook commands with a quoted `~` that bash never expands
 (D1); hooks falling back to mode A in every unregistered repo and writing
@@ -58,8 +58,9 @@ checkable right answer.
   file edited since install: a fix belongs in this repository first.
 - **Namespace prefix** (default `cfw`): agents, commands and skills are
   installed as `<prefix>-<name>`. Hooks, scripts, the registry, templates
-  and the shared `docs/` root, including this framework's reference
-  ADRs, live in `~/.claude/<prefix>/`. The installer rewrites every
+  and the shared `docs/` root live in `~/.claude/<prefix>/`. (This
+  framework's own ADRs were also installed there as reference until ADR
+  0021 kept them out of every install.) The installer rewrites every
   cross-reference: slash commands, backticked agent and skill names,
   `applies_to`, machinery paths, and shared-doc paths made absolute.
 - **`framework.json`** in the namespace is the single config source:
@@ -136,9 +137,9 @@ of negotiating it per file. One config source ends the
 
 ## References
 
-`docs/product/specs/0001-mode-c-hardening.md`,
-`docs/decisions/0014-setup-framework-adoption-modes.md`,
-`docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`,
-`docs/decisions/0018-constitution-baseline-layer.md`,
+`evolution/product/specs/0001-mode-c-hardening.md`,
+`evolution/decisions/0014-setup-framework-adoption-modes.md`,
+`evolution/decisions/0015-unified-docs-tree-and-layered-constitution.md`,
+`evolution/decisions/0018-constitution-baseline-layer.md`,
 `.claude/scripts/install_user_level.py`, `.claude/scripts/uninstall.py`,
 `.claude/hooks/_project_paths.py`, `.claude/commands/setup-framework.md`

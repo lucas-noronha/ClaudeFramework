@@ -1,7 +1,7 @@
 """Shared helper for every hook that needs to know *which project* the
-current session is about — see docs/decisions/0013-multi-project-ai-repo.md,
-docs/decisions/0014-setup-framework-adoption-modes.md and
-docs/decisions/0015-unified-docs-tree-and-layered-constitution.md. Not a
+current session is about — see framework ADR 0013,
+framework ADR 0014 and
+framework ADR 0015. Not a
 hook entry point itself, not wired in settings.json directly — imported
 by the hooks that are, the same pattern _pipeline_metrics.py already
 establishes for shared non-hook code.
@@ -15,7 +15,7 @@ CLAUDE.md and per-project state live. A two-step lookup supplies that:
   2. `<subtree>/project-config.json` (committed) holds that project's
      shared values (build/test command, language split).
 
-Since ADR 0015 that subtree is `<ai-repo>/docs/<project-name>/` (or
+Since framework ADR 0015 that subtree is `<ai-repo>/docs/<project-name>/` (or
 `~/.claude/docs/<project-name>/` in mode C) — a folder *inside* the one
 shared `docs/` tree, which also holds the cross-project material at its
 root (`constitution.md`, `workflow/`, `glossary.md`, the product
@@ -27,8 +27,8 @@ whatever absolute path the registry hands it.
 Resolved: several *callers* used to hardcode a `docs/` level inside that
 returned root (e.g. `os.path.join(resolve_project_root(p), "docs",
 "product", "specs")`, and `project_relative_path()` results matched
-against a `docs/...` prefix). That was right for ADR 0013's
-`projects/<name>/docs/` subtree; under ADR 0015 a project's own folders
+against a `docs/...` prefix). That was right for framework ADR 0013's
+`projects/<name>/docs/` subtree; under framework ADR 0015 a project's own folders
 sit directly in the subtree (`<subtree>/product/specs/`,
 `<subtree>/decisions/`) with no second `docs/` level — except in mode A,
 where `resolve_project_root()` returns `CLAUDE_PROJECT_DIR` unchanged and
@@ -62,7 +62,7 @@ rather than raising inside a hook. That fallback is what keeps classic
 disk at all, `resolve_project_root` hands back exactly what it was
 given.
 
-**One exception, user-level installs (ADR 0017).** Under mode C the
+**One exception, user-level installs (framework ADR 0017).** Under mode C the
 fallback above is exactly the bug: a hook loaded from `~/.claude` for a
 repo nobody registered would treat it as mode A and write
 `<repo>/.claude/...` or `docs/*/README.md` into it. A user-level install
@@ -73,7 +73,7 @@ it first, so in a user-level install an unregistered repo gets zero
 footprint, and mode A/B behaviour is untouched (no `framework.json`,
 gate always open).
 
-`framework.json` is also the single config source ADR 0017 asks for: the
+`framework.json` is also the single config source framework ADR 0017 asks for: the
 registry, the shared `docs/` root, the projects root and the template
 locations are all recorded there at install time, and nothing below
 infers them from folder shape when it exists.
@@ -104,7 +104,7 @@ def framework_home() -> str:
 
 def framework_config() -> dict:
     """`framework.json` beside `hooks/`, written by the user-level
-    installer (ADR 0017). `{}` in modes A/B, where nothing writes it.
+    installer (framework ADR 0017). `{}` in modes A/B, where nothing writes it.
     """
     try:
         with open(os.path.join(framework_home(), FRAMEWORK_CONFIG_FILENAME), encoding="utf-8") as f:
@@ -162,7 +162,7 @@ def _registry_candidates(project_dir: str):
     configured = framework_config().get("registry")
     if isinstance(configured, str) and configured:
         # A user-level install names its registry explicitly — nothing to
-        # infer, and no other location may answer for it (ADR 0017).
+        # infer, and no other location may answer for it (framework ADR 0017).
         return [configured]
 
     candidates = [
@@ -236,7 +236,7 @@ def is_registered(project_dir: str) -> bool:
 
 
 def hook_should_run(project_dir: str) -> bool:
-    """The registration gate every hook calls first (ADR 0017, spec 0001
+    """The registration gate every hook calls first (framework ADR 0017, framework spec 0001
     FR-03). Always True outside a user-level install, so modes A and B
     behave exactly as before. Under a user-level install, True only for a
     registered `CLAUDE_PROJECT_DIR`: an unregistered repo must never see
@@ -251,7 +251,7 @@ def resolve_project_root(project_dir: str) -> str:
     """This session's project subtree — the folder holding its
     `CLAUDE.md`, `project-config.json`, its optional own
     `constitution.md` and its documentation folders (`product/`,
-    `architecture/`, `decisions/`). Since ADR 0015 that folder is
+    `architecture/`, `decisions/`). Since framework ADR 0015 that folder is
     `docs/<project-name>/` under the AI-repo's shared `docs/` root, but
     nothing here depends on that: the value is opaque, whatever absolute
     path the registry recorded.
@@ -274,7 +274,7 @@ def resolve_docs_root(project_dir: str) -> str:
     sits at its root, so this returns `<project_dir>/docs`.
 
     Mode B/C (routed): `resolve_project_root()` already returns
-    `docs/<project-name>/` inside the shared tree (ADR 0015), and that
+    `docs/<project-name>/` inside the shared tree (framework ADR 0015), and that
     folder's own `product/`, `architecture/`, `decisions/` sit directly
     inside it — no second `docs/` level — so this returns that root
     unchanged.
@@ -381,12 +381,12 @@ def get_projects_root(project_dir: str):
     are created (mode C, chosen once at setup). `None` when unset.
 
     The key is `projects_root` — a JSON key name, not a folder name. Its
-    *value* defaults to the shared `docs/` root since ADR 0015
+    *value* defaults to the shared `docs/` root since framework ADR 0015
     (`<ai-repo>/docs` in mode B, `~/.claude/docs` in mode C), so a
     subtree lands at `docs/<project-name>/`; it stays overridable to any
-    folder, for ADR 0014's unchanged reasons.
+    folder, for framework ADR 0014's unchanged reasons.
 
-    A user-level install records it in `framework.json` (ADR 0017's one
+    A user-level install records it in `framework.json` (framework ADR 0017's one
     config source), which wins; the registry key is the pre-0017 home and
     stays readable so an older install keeps working.
     """
@@ -399,8 +399,8 @@ def get_projects_root(project_dir: str):
 
 def resolve_shared_docs_root(project_dir: str):
     """The shared `docs/` root — constitution layers, `workflow/`,
-    `glossary.md`, the `product/` templates and the framework's own
-    reference ADRs (ADR 0015).
+    `glossary.md`, the `product/` templates and the ADR template
+    (framework ADR 0015).
 
     - A user-level install names it in `framework.json` (no inference).
     - Unrouted (mode A): the repo's own `docs/`, which is both shared and
@@ -437,7 +437,7 @@ def resolve_shared_docs_root(project_dir: str):
 def load_project_config(project_dir: str) -> dict:
     """This project's config in every mode: `<subtree>/project-config.json`
     when routed, else the optional mode A file
-    `<repo>/.claude/project-config.json` (ADR 0020 — census, review
+    `<repo>/.claude/project-config.json` (framework ADR 0020 — census, review
     policy, routing-key names and the build/test command need a
     machine-readable home in mode A too). `{}` when neither exists, which
     every caller treats as "framework defaults".
@@ -457,7 +457,7 @@ def project_config_path(project_dir: str) -> str:
 def detect_main_branch(repo_dir: str):
     """`origin/HEAD`'s branch name, else the checked-out branch, else
     None. Read-only git; used at registration time and as the runtime
-    fallback when `main_integration_branch` isn't configured (spec 0001
+    fallback when `main_integration_branch` isn't configured (framework spec 0001
     FR-06).
     """
     for args in (
@@ -488,8 +488,8 @@ def state_file_path(project_dir: str, filename: str) -> str:
     Routed (mode B/C): in the project's own subtree, beside its
     `CLAUDE.md` — i.e. `docs/<project-name>/session-handoff.md` under ADR
     0015's unified tree — so two target repos sharing one `.claude/` stop
-    writing the same physical file (ADR 0013). That does put operational
-    state inside a `docs/` tree, which ADR 0015 accepted explicitly; the
+    writing the same physical file (framework ADR 0013). That does put operational
+    state inside a `docs/` tree, which framework ADR 0015 accepted explicitly; the
     `.gitignore` patterns for these files follow the same `docs/*/` shape.
 
     Unrouted (classic mode A, no registry at all): exactly where it lives

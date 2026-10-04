@@ -12,7 +12,7 @@ happened in practice: several docs' context_budget frontmatter changed
 without anyone remembering to update CLAUDE.md's copy of the number.
 
 The same row also gets compared against the doc's routing summary
-(`resumo` by default, configurable via `routing_keys`, ADR 0019): index
+(`resumo` by default, configurable via `routing_keys`, framework ADR 0019): index
 tables copy it verbatim, and the doc wins when the two diverge.
 """
 import json
@@ -37,7 +37,7 @@ def extract_number(text: str):
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return
@@ -118,7 +118,7 @@ def main() -> None:
             "hand-authored, so nothing does it for you automatically."
         )
 
-    # Routing summary (ADR 0019): the index copies the doc's own summary
+    # Routing summary (framework ADR 0019): the index copies the doc's own summary
     # verbatim, and the doc wins on divergence.
     if doc_summary and row_match.group(1).strip() != doc_summary:
         messages.append(

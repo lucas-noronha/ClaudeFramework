@@ -4,7 +4,7 @@ scope: model-tiering
 status: active
 last_updated: {{DATE}}
 context_budget: ~500 tokens
-related: [../decisions/0001-tooling-agents-commands-skills.md, ../decisions/0004-plan-tasks-implement-rebalance.md]
+related: []
 context: This doc was added while generalizing this framework — the
   tiering itself was real and deliberate in the source project, but
   only lived implicitly in each agent's frontmatter there. Written
@@ -31,7 +31,7 @@ not just its raw difficulty.
 ## Tiering applies to the review step too
 
 `/implement`'s orchestration mode (see
-`../decisions/0004-plan-tasks-implement-rebalance.md`) auto-reviews a
+framework ADR 0004) auto-reviews a
 finished task with `reviewer` only when `coder` (mid tier) did the
 work — not when `quickfix` (cheapest tier) did. Spending a mid-tier
 review pass on a task scoped, by construction, to a single file with no
@@ -39,7 +39,7 @@ new business rule doesn't buy back its own cost; the same reasoning
 that keeps `quickfix` at the cheapest tier keeps it out of the
 automatic review loop too. `reviewer`'s two other scopes — the
 whole-feature pass (`/review`) and the on-demand sweep against an
-already-`implemented` spec (`/reconcile`, ADR 0012) — stay at the same
+already-`implemented` spec (`/reconcile`, framework ADR 0012) — stay at the same
 mid tier: both are still bounded-checklist judgment, not open-ended
 design.
 

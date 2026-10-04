@@ -5,7 +5,7 @@ and which apply to it without opening or globbing every SKILL.md.
 Writes the filesystem directly (not through the Write/Edit tool), so
 it never re-triggers itself.
 
-Scope (ADR 0017, spec 0001 D3): this hook only ever reads and writes the
+Scope (framework ADR 0017, framework spec 0001 D3): this hook only ever reads and writes the
 framework's own skills. In modes A/B that is `<project>/.claude/skills/`.
 In a user-level install it is the `<prefix>-*` folders under the config
 directory's `skills/`, and the index is written inside the install
@@ -109,7 +109,7 @@ def write_index(skills_dir: str, folder_glob: str, index_path: str) -> int:
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
         return

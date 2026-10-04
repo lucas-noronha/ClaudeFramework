@@ -11,7 +11,7 @@ the common case costs one check and changes nothing.
 Why this exists: `triage` used to live only inside `/plan`, behind an
 approved spec, so even a typo fix paid for `/spec` → `/plan` → `/tasks`
 → `/implement`. This lane makes the ceremony proportional to the change
-(see `docs/decisions/0020-proportional-pipeline-cost.md`). **Only the
+(see framework ADR 0020). **Only the
 ceremony shrinks.** The constitution, the build/test gate and every
 scope rule apply exactly as in the full path.
 

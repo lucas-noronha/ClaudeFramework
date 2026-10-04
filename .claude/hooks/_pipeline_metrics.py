@@ -7,7 +7,7 @@ the hooks that are.
 The log belongs to one project, not to one `.claude/`: with a shared
 `.claude/` backing several target repos, `<project>/.claude/` is the
 same physical file for all of them, so one project's metrics would leak
-into another's (ADR 0013). `state_file_path` routes it to the project's
+into another's (framework ADR 0013). `state_file_path` routes it to the project's
 own subtree when this session is registered, and leaves it at today's
 `<project>/.claude/pipeline-metrics.jsonl` when it isn't.
 """

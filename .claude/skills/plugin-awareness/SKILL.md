@@ -5,9 +5,9 @@ applies_to: [coder, quickfix, architect, reviewer]
 ---
 
 Full catalog and rationale: `docs/workflow/plugin-integrations.md`,
-`docs/decisions/0002-plugin-integration.md`,
-`docs/decisions/0003-superpowers-sdd-wrapping.md`,
-`docs/decisions/0004-plan-tasks-implement-rebalance.md`. This file is
+framework ADR 0002,
+framework ADR 0003,
+framework ADR 0004. This file is
 what you act on; those are why.
 
 The user interacts with this framework's own commands only
@@ -102,10 +102,10 @@ If the matching Core plugin *is* installed and enabled this session,
 themselves) invoke it directly via the `Skill` tool as a complementary
 pass instead of relying only on the paragraphs above — see their own
 agent/command bodies for exactly when. `/tasks` never invokes one — per
-ADR 0004 it's pure mechanical decomposition, no technical judgment to
+framework ADR 0004 it's pure mechanical decomposition, no technical judgment to
 back with a skill. `quickfix` never invokes a
 plugin directly (no `Skill` tool, deliberately kept cheap per
-`docs/decisions/0002-plugin-integration.md`) — the absorbed paragraphs
+framework ADR 0002) — the absorbed paragraphs
 above are its floor and its ceiling. Either way, the standard above is
 the floor, not the plugin's job alone.
 

@@ -1,7 +1,7 @@
 """PostToolUse (Edit/Write): run a project's own formatter and dependency
 audit, as declared in its config — the per-project opt-in that replaces
 `auto_format.py`/`dependency_audit.py` wherever one set of hooks serves
-several projects (ADR 0017, spec 0001 FR-07/D8).
+several projects (framework ADR 0017, framework spec 0001 FR-07/D8).
 
 Those two `.example` hooks are per-project by nature: their commands
 name one stack's formatter and one solution file. In a shared install

@@ -5,7 +5,7 @@ status: active
 last_updated: {{DATE}}
 resumo: How do architecture docs stay true to the code, and what may an agent take from them?
 naoResponde: What any particular project's architecture is — read that project's own architecture docs.
-related: [../decisions/0019-living-architecture-docs.md, ../architecture/module-structure.md.template]
+related: [../architecture/module-structure.md.template]
 context_budget: ~1100 tokens
 ---
 
@@ -15,7 +15,7 @@ Specs and ADRs are kept honest by hooks and reconciliation. Architecture
 docs need the same, because `coder` and `reviewer` treat
 `architecture/module-structure.md` as ground truth: a stale or wrong doc
 gets amplified into every review. Full rationale:
-`../decisions/0019-living-architecture-docs.md`.
+framework ADR 0019.
 
 ## 1. Describing is not prescribing
 

@@ -1,6 +1,6 @@
 """PostToolUse (Edit/Write): decide, at zero token cost, whether a spec's
 stakeholder-language validation summary needs re-syncing — and only then
-hand the sync to the session (ADR 0020, spec 0003 FR-03; spec 0001
+hand the sync to the session (framework ADR 0020, framework spec 0003 FR-03; framework spec 0001
 D10/D11).
 
 Before this hook, an `agent` hook started a Sonnet agent on every edit to
@@ -73,7 +73,7 @@ def requirements_hash(content: str) -> str:
 
 
 def main() -> None:
-    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # Registration gate (framework ADR 0017): a no-op for an unregistered repo under
     # a user-level install; always open in modes A/B.
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     if not hook_should_run(project):

@@ -4,7 +4,7 @@ description: Decides whether a new piece of project knowledge belongs in a Skill
 ---
 
 Full rationale for the split this skill enforces →
-`docs/decisions/0001-tooling-agents-commands-skills.md`.
+framework ADR 0001.
 
 ## The one test that decides Skill vs. something else
 

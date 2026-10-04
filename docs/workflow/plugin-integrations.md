@@ -4,7 +4,7 @@ scope: plugin-integrations
 status: active
 last_updated: {{DATE}}
 context_budget: ~1550 tokens
-related: [../decisions/0002-plugin-integration.md, ../decisions/0003-superpowers-sdd-wrapping.md, ../decisions/0004-plan-tasks-implement-rebalance.md]
+related: []
 context: This catalog is a worked example — the exact table below
   reflects the official `claude-plugins-official` marketplace as
   installed on the machine this framework was extended on. Replace it
@@ -20,17 +20,17 @@ every project on a machine — unlike everything else under `.claude/`,
 which is repo-local. This doc splits what's out there into two
 buckets and says what this framework actually does with each. The
 mechanism itself is recorded in
-`../decisions/0002-plugin-integration.md`; this file is the table you
+framework ADR 0002; this file is the table you
 keep current.
 
 ## Core — useful on effectively any project
 
 | Plugin | What it gives you | Where it complements the pipeline | How this framework uses it |
 |---|---|---|---|
-| `superpowers` | Brainstorming/planning methodology, TDD discipline, systematic debugging, parallel-agent orchestration, review-feedback discipline, git-worktree isolation, branch finishing | `/spec`, `/plan`, `coder`/`quickfix` (implementation), `/implement` (orchestration), `/review`, `/worktree` | Wrapped at each matching stage as a complementary pass when installed (see `docs/decisions/0003-superpowers-sdd-wrapping.md` for the mapping, `docs/decisions/0004-plan-tasks-implement-rebalance.md` for what each stage itself does): `/spec` invokes `brainstorming`; `/plan` invokes `writing-plans` for standard/structural tiers (never trivial); `/tasks` invokes nothing — pure mechanical decomposition; `/implement`'s orchestration mode invokes `dispatching-parallel-agents`/`subagent-driven-development` to structure parallel task waves and `executing-plans` to run a spec's task list to completion; `coder` invokes `test-driven-development`, `systematic-debugging`, `receiving-code-review`, and `verification-before-completion`; `quickfix` carries the `verification-before-completion` discipline absorbed only — it has no `Skill` tool, kept deliberately cheap per ADR 0002; `/review` invokes `requesting-code-review` and points at `finishing-a-development-branch` once approved; `/worktree` names `using-git-worktrees` as the same discipline without replacing its own origin-pinned steps. The equivalent discipline is written into `plugin-awareness` for when it isn't installed — this framework's own commands stay the sequencing authority either way. |
+| `superpowers` | Brainstorming/planning methodology, TDD discipline, systematic debugging, parallel-agent orchestration, review-feedback discipline, git-worktree isolation, branch finishing | `/spec`, `/plan`, `coder`/`quickfix` (implementation), `/implement` (orchestration), `/review`, `/worktree` | Wrapped at each matching stage as a complementary pass when installed (see framework ADR 0003 for the mapping, framework ADR 0004 for what each stage itself does): `/spec` invokes `brainstorming`; `/plan` invokes `writing-plans` for standard/structural tiers (never trivial); `/tasks` invokes nothing — pure mechanical decomposition; `/implement`'s orchestration mode invokes `dispatching-parallel-agents`/`subagent-driven-development` to structure parallel task waves and `executing-plans` to run a spec's task list to completion; `coder` invokes `test-driven-development`, `systematic-debugging`, `receiving-code-review`, and `verification-before-completion`; `quickfix` carries the `verification-before-completion` discipline absorbed only — it has no `Skill` tool, kept deliberately cheap per framework ADR 0002; `/review` invokes `requesting-code-review` and points at `finishing-a-development-branch` once approved; `/worktree` names `using-git-worktrees` as the same discipline without replacing its own origin-pinned steps. The equivalent discipline is written into `plugin-awareness` for when it isn't installed — this framework's own commands stay the sequencing authority either way. |
 | `code-review` | Configurable-effort correctness/simplification review | `/review` → `reviewer` | `reviewer` invokes it as a complementary pass when installed, folding real findings into its own verdict. Its own checklist pass stays authoritative either way. |
 | `pr-review-toolkit` | Specialized reviewers (silent-failure-hunter, type-design-analyzer, test-coverage, comment accuracy) | `/review` → `reviewer` | Same as `code-review` — complementary, not a replacement. |
-| `security-review` | Security-focused review of pending changes | `reviewer` (any scope), `coder` | Invoked for a security-sensitive diff (auth, secrets, input handling); a finding maps to a named Core Principle when `docs/constitution.md` exists (ADR 0010). Its value doesn't depend on the constitution file being present. |
+| `security-review` | Security-focused review of pending changes | `reviewer` (any scope), `coder` | Invoked for a security-sensitive diff (auth, secrets, input handling); a finding maps to a named Core Principle when `docs/constitution.md` exists (framework ADR 0010). Its value doesn't depend on the constitution file being present. |
 | `code-simplifier` | Post-hoc simplification pass, functionality preserved | `coder`, after implementation is green | `coder` runs it once tests pass, before considering the task done, when installed. |
 | `context7` (MCP) | Current library/framework docs | `researcher`, `architect` | Already wired via `.mcp.json.example` — no change from this ADR. |
 
@@ -57,7 +57,7 @@ pipeline breaks — it just runs without the complementary pass.
 `superpowers` specifically now backs a complementary pass at nearly
 every SDD stage (`/spec`, `/plan`, `coder`/`quickfix`, `/implement`,
 `/review`, `/worktree` — see the row above and
-`docs/decisions/0003-superpowers-sdd-wrapping.md`), so it's worth
+framework ADR 0003), so it's worth
 installing even on a project where you don't expect to lean on the
 other Core plugins.
 

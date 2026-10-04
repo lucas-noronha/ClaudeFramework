@@ -1,5 +1,5 @@
-"""Per-feature pipeline cost, from the raw event log (ADR 0011, extended
-by ADR 0020, spec 0003 FR-05).
+"""Per-feature pipeline cost, from the raw event log (framework ADR 0011, extended
+by framework ADR 0020, framework spec 0003 FR-05).
 
     metrics.py start --feature ID --lane full|fast [--tier T]
     metrics.py finish --feature ID
@@ -121,7 +121,7 @@ def render(rows, lanes) -> str:
 def main(argv=None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    parser = argparse.ArgumentParser(description="Per-feature pipeline metrics (ADR 0020).")
+    parser = argparse.ArgumentParser(description="Per-feature pipeline metrics (framework ADR 0020).")
     parser.add_argument("--project-dir", default=os.environ.get("CLAUDE_PROJECT_DIR", "."))
     sub = parser.add_subparsers(dest="cmd", required=True)
     start = sub.add_parser("start")
