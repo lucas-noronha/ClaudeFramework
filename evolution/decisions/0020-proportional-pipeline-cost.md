@@ -107,8 +107,6 @@ metrics make the remaining trade-off — how much review a project needs
   split that needs stakeholder sign-off uses the full path.
 - Metrics attribution is by time window. Two features running at once
   on one project are flagged as overlapped, not separated.
-- Existing mode A projects keep their old `settings.json` (literal gate
-  command, agent hooks) until they re-run Domain 1's settings step.
 
 ## References
 

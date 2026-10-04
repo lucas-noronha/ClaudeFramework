@@ -45,9 +45,6 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
   "reference ADRs". `evolution/` has a project subtree's shape, so the
   pipeline can run on the framework itself (`register_project.py
   --subtree`). `tests/test_skeleton_boundary.py` enforces the boundary.
-  *Upgrade note:* a mode A project adopted earlier can delete the
-  framework ADRs 0001–0020 (and the generated README) from its own
-  `docs/decisions/`.
 - **Fixed — hooks silently ignored non-ASCII paths on Windows.** Every
   hook read stdin with `json.load(sys.stdin)`, which on Windows decodes
   with cp1252. Claude Code sends UTF-8, so a path like
@@ -87,8 +84,8 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
 - **Mode A settings changed (ADR 0020).** The gate now runs
   `run_build_test.py`, which reads `build_test_cmd` from the new optional
   `.claude/project-config.json`. The two validation-summary `agent` hooks
-  were replaced by the command hook `validation_sync_check.py`. Existing
-  `settings.json` files keep working until you re-run Domain 1.
+  were replaced by the command hook `validation_sync_check.py`. (No
+  project had adopted mode A yet, so there is nothing to migrate.)
 - **Mode C commands are prefixed** (`/cfw-spec`, ...). The hand-built
   install from 2026-09-30 has no manifest this installer recognizes, so
   remove it with its own uninstaller first. The registry and project

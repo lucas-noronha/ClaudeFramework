@@ -79,10 +79,8 @@ shipped command, agent or skill itself; the ADR is only the why.
 
 - Accepted ADRs keep their historical `docs/decisions/...` paths in their
   bodies (immutability); `evolution/README.md` says how to read them.
-- A project adopted in mode A before this ADR still has the framework's
-  ADRs in its `docs/decisions/`. Removing them (0001–0020, plus the
-  generated README) is safe; its own ADRs renumber only if they had
-  collided.
+- No project had adopted mode A when this landed, so no project carries
+  a copy of the framework's ADRs and nothing needs migrating.
 - Mode B AI-repos carry `evolution/` (they are clones of this
   repository) but outside `docs/`, so project subtrees never meet it.
 
