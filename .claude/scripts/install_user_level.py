@@ -26,6 +26,9 @@ What it does (framework spec 0001 FR-01..FR-10, NFR-03):
   `settings.json` entry added is recorded in
   `<config>/<prefix>/manifest.json`. `scripts/uninstall.py` removes
   exactly that, dry-run by default.
+- **Worktrees root** (`--worktrees-root`, optional): the per-machine
+  folder `/worktree` creates spec worktrees under, recorded in
+  `framework.json` and kept across upgrades until changed (`""` clears it).
 - **Absolute hook paths** (FR-04), and permissions generated against the
   absolute projects root (FR-08).
 - **No per-project placeholder survives** (FR-06, AC-04): per-project
@@ -433,6 +436,7 @@ def main(argv=None) -> int:
     parser.add_argument("--prefix", default="cfw", help="namespace prefix for agents/commands/skills (default: cfw)")
     parser.add_argument("--config-dir", help="Claude Code user config dir (default: ~/.claude; required if CLAUDE_CONFIG_DIR is set)")
     parser.add_argument("--projects-root", help="where project subtrees are created (default: <namespace>/docs)")
+    parser.add_argument("--worktrees-root", help="per-machine folder /worktree creates spec worktrees under (default: kept from the last install, else none = sibling of the repo; \"\" clears it)")
     parser.add_argument("--python", default=None, help="interpreter command used in hook commands (default: python, else python3)")
     parser.add_argument("--retire", action="append", default=[], help="move one of your own files/folders under the config dir aside (restorable by uninstall)")
     parser.add_argument("--today", help=argparse.SUPPRESS)
@@ -475,6 +479,10 @@ def main(argv=None) -> int:
             old_cfg = {}
 
     projects_root = posix(os.path.abspath(os.path.expanduser(args.projects_root))) if args.projects_root else old_cfg.get("projects_root") or f"{namespace}/docs"
+    if args.worktrees_root is None:
+        worktrees_root = old_cfg.get("worktrees_root")
+    else:
+        worktrees_root = posix(os.path.abspath(os.path.expanduser(args.worktrees_root))) if args.worktrees_root.strip() else None
     cfg = {
         "install_mode": "user-level",
         "prefix": args.prefix,
@@ -490,6 +498,7 @@ def main(argv=None) -> int:
         "registry": f"{namespace}/projects.local.json",
         "shared_docs_root": f"{namespace}/docs",
         "projects_root": projects_root,
+        "worktrees_root": worktrees_root,
         "claude_md_template": f"{namespace}/CLAUDE.md.template",
         "python": args.python or old_cfg.get("python") or default_python(),
     }
@@ -613,6 +622,7 @@ def main(argv=None) -> int:
         counts[action] = counts.get(action, 0) + 1
     print(f"{'Installing' if args.apply else 'Dry run'}: prefix `{args.prefix}` into {config_dir}")
     print(f"  namespace: {namespace}   projects root: {projects_root}")
+    print(f"  worktrees root: {worktrees_root or '(none — each spec worktree sits beside its repo)'}")
     print("  files: " + ", ".join(f"{n} {a}" for a, n in sorted(counts.items())) + (f", {len(stale)} removed (dropped upstream)" if stale else ""))
     for action, dest in actions:
         if action in ("create", "update", "keep"):

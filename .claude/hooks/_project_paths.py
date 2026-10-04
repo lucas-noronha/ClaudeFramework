@@ -91,8 +91,11 @@ import sys
 REGISTRY_FILENAME = "projects.local.json"
 CONFIG_FILENAME = "project-config.json"
 FRAMEWORK_CONFIG_FILENAME = "framework.json"
+LOCAL_FRAMEWORK_CONFIG_FILENAME = "framework.local.json"
 PROJECTS_ROOT_KEY = "projects_root"
+WORKTREES_ROOT_KEY = "worktrees_root"
 USER_LEVEL_MODE = "user-level"
+WORKTREE_STATE_DIR = ".worktree-state"
 
 
 def framework_home() -> str:
@@ -112,6 +115,34 @@ def framework_config() -> dict:
     except (OSError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def _read_json_dict(path: str) -> dict:
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def local_framework_config(project_dir=None) -> dict:
+    """`framework.local.json` beside `hooks/` — per-machine, gitignored
+    framework settings for modes A/B, where no installer writes
+    `framework.json`. `{}` when missing or unparseable.
+
+    A linked worktree has its own checked-out `.claude/` but never the
+    gitignored file, so when this one has nothing, the main checkout's
+    `.claude/` answers (framework ADR 0022 section 5). `project_dir`
+    defaults to `CLAUDE_PROJECT_DIR`.
+    """
+    data = _read_json_dict(os.path.join(framework_home(), LOCAL_FRAMEWORK_CONFIG_FILENAME))
+    if data:
+        return data
+    wt = linked_worktree(project_dir or os.environ.get("CLAUDE_PROJECT_DIR") or "")
+    if wt is None:
+        return {}
+    return _read_json_dict(os.path.join(wt["main"], ".claude", LOCAL_FRAMEWORK_CONFIG_FILENAME))
 
 
 def is_user_level_install() -> bool:
@@ -147,6 +178,82 @@ def normalize(path: str) -> str:
     paths is never safe.
     """
     return path.replace("\\", "/").rstrip("/")
+
+
+_WORKTREE_CACHE = {}
+
+
+def _find_dot_git(project_dir: str):
+    """`(checkout root, path of its .git)` for the nearest `.git` at or
+    above `project_dir`, or None. File reads only — no git subprocess.
+    """
+    current = os.path.abspath(project_dir)
+    while True:
+        dot_git = os.path.join(current, ".git")
+        if os.path.exists(dot_git):
+            return current, dot_git
+        parent = os.path.dirname(current)
+        if parent == current:
+            return None
+        current = parent
+
+
+def _read_text(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def _resolve_linked_worktree(project_dir: str):
+    found = _find_dot_git(project_dir)
+    if found is None:
+        return None
+    root, dot_git = found
+    if not os.path.isfile(dot_git):
+        return None  # a real `.git` directory: a main checkout
+    first = _read_text(dot_git).strip().splitlines()[0].strip()
+    if not first.startswith("gitdir:"):
+        return None
+    gitdir = first[len("gitdir:"):].strip()
+    gitdir = os.path.normpath(gitdir if os.path.isabs(gitdir) else os.path.join(root, gitdir))
+    common = _read_text(os.path.join(gitdir, "commondir")).strip()
+    common = os.path.normpath(common if os.path.isabs(common) else os.path.join(gitdir, common))
+    # Only an ordinary `<main>/.git` counts: a submodule, a bare repo or a
+    # renamed common dir has no main checkout this resolver can name.
+    if os.path.basename(common) != ".git" or not os.path.isdir(common):
+        return None
+    main = os.path.dirname(common)
+    try:
+        head = _read_text(os.path.join(gitdir, "HEAD")).strip()
+    except OSError:
+        head = ""
+    prefix = "ref: refs/heads/"
+    rel = _relative_within(root, os.path.abspath(project_dir))
+    return {
+        "admin": os.path.basename(gitdir),
+        "main": normalize(main),
+        "subpath": "" if rel in (None, ".") else rel,
+        "branch": head[len(prefix):] if head.startswith(prefix) else None,
+    }
+
+
+def linked_worktree(project_dir: str):
+    """`{admin, main, subpath, branch}` when `project_dir` sits inside a
+    linked git worktree, else None (a main checkout, no git, or anything
+    unexpected) — framework ADR 0022 section 1.
+
+    Reads git's own link files (`<wt>/.git` -> gitdir -> `commondir`), so
+    it needs no subprocess, doesn't depend on where the worktree lives and
+    is memoized per process. `branch` is None for a detached HEAD. Never
+    raises: a hook must degrade to today's behaviour instead.
+    """
+    if not project_dir:
+        return None
+    if project_dir not in _WORKTREE_CACHE:
+        try:
+            _WORKTREE_CACHE[project_dir] = _resolve_linked_worktree(project_dir)
+        except (OSError, ValueError, IndexError):
+            _WORKTREE_CACHE[project_dir] = None
+    return _WORKTREE_CACHE[project_dir]
 
 
 def _registry_candidates(project_dir: str):
@@ -200,6 +307,21 @@ def _read_registry(project_dir: str) -> dict:
     return _find_registry(project_dir)[1]
 
 
+def _lookup_route(routes: dict, wanted):
+    for candidate in wanted:
+        if candidate in routes:
+            return normalize(routes[candidate])
+
+    # Windows paths are case-insensitive, so a registry entry written
+    # with a differently-cased drive letter is still the same project.
+    if os.name == "nt":
+        lowered = {key.lower(): value for key, value in routes.items()}
+        for candidate in wanted:
+            if candidate.lower() in lowered:
+                return normalize(lowered[candidate.lower()])
+    return None
+
+
 def _registered_subtree(project_dir: str):
     """This project's subtree from the registry, or None when it has no
     entry (mode A, or an unregistered repo under a user-level install).
@@ -216,18 +338,16 @@ def _registered_subtree(project_dir: str):
 
     # The raw value first (what every entry is keyed by), then its
     # absolute form, for a caller that was handed `.` or a relative path.
-    wanted = [normalize(project_dir), normalize(os.path.abspath(project_dir or "."))]
-    for candidate in wanted:
-        if candidate in routes:
-            return normalize(routes[candidate])
+    found = _lookup_route(routes, [normalize(project_dir), normalize(os.path.abspath(project_dir or "."))])
+    if found is not None:
+        return found
 
-    # Windows paths are case-insensitive, so a registry entry written
-    # with a differently-cased drive letter is still the same project.
-    if os.name == "nt":
-        lowered = {key.lower(): value for key, value in routes.items()}
-        for candidate in wanted:
-            if candidate.lower() in lowered:
-                return normalize(lowered[candidate.lower()])
+    # No entry of its own: a linked worktree routes like its main checkout
+    # at the same subpath (framework ADR 0022 section 1).
+    wt = linked_worktree(project_dir)
+    if wt is not None:
+        twin = os.path.join(wt["main"], wt["subpath"]) if wt["subpath"] else wt["main"]
+        return _lookup_route(routes, [normalize(twin), normalize(_real(twin))])
     return None
 
 
@@ -481,7 +601,55 @@ def main_integration_branch(project_dir: str):
     return detect_main_branch(project_dir)
 
 
-def state_file_path(project_dir: str, filename: str) -> str:
+def get_worktrees_root(project_dir=None):
+    """The machine-wide folder `/worktree` creates spec worktrees under,
+    chosen at `/setup-framework`. `None` when unset, which keeps the
+    original sibling layout (`../<short-name>`).
+
+    Per machine by design: a user-level install records it in
+    `framework.json` (the installer's `--worktrees-root`), modes A/B in
+    the gitignored `framework.local.json`. Never in `project-config.json`,
+    which is committed and holds no absolute paths. From inside a linked
+    worktree the main checkout's `framework.local.json` answers too (see
+    `local_framework_config`).
+    """
+    for config in (framework_config(), local_framework_config(project_dir)):
+        value = config.get(WORKTREES_ROOT_KEY)
+        if isinstance(value, str) and value.strip():
+            return normalize(os.path.expanduser(value.strip()))
+    return None
+
+
+def _main_checkout(project_dir: str) -> str:
+    """The repo's main working tree — not a linked worktree — so a
+    worktree path computed from inside another worktree still groups
+    under the real repo's name. Falls back to `project_dir`. File reads
+    only (see `linked_worktree`).
+    """
+    wt = linked_worktree(project_dir)
+    if wt is not None:
+        return wt["main"]
+    try:
+        found = _find_dot_git(project_dir)
+    except (OSError, ValueError):
+        found = None
+    return found[0] if found else project_dir
+
+
+def worktree_path(project_dir: str, short_name: str) -> str:
+    """Where `/worktree` puts the spec `short_name`'s worktree:
+    `<worktrees_root>/<repo folder name>/<short_name>` when a root is
+    configured (the repo level keeps two projects' same-named specs
+    apart), else the sibling `<repo parent>/<short_name>`.
+    """
+    main = _main_checkout(project_dir)
+    root = get_worktrees_root(project_dir)
+    if root is None:
+        return normalize(os.path.join(os.path.dirname(os.path.abspath(main)), short_name))
+    return normalize(os.path.join(root, os.path.basename(os.path.abspath(main)), short_name))
+
+
+def state_file_path(project_dir: str, filename: str, scope=None) -> str:
     """Where a per-project *state* file (session handoff, metrics log,
     dismiss list) belongs for this session.
 
@@ -497,10 +665,23 @@ def state_file_path(project_dir: str, filename: str) -> str:
     would drop per-machine operational state into the target repo's own
     root — a behaviour change, and a `.gitignore` break, that classic
     mode never asked for.
+
+    `scope` matters only inside a linked worktree (framework ADR 0022
+    section 2); in a main checkout every scope resolves as above.
+    `"checkout"` is state that belongs to one checkout (the handoff): in
+    modes B/C `<subtree>/.worktree-state/<admin>/`, in mode A the
+    worktree's own `.claude/`. `"project"` is state shared by every
+    checkout (metrics): the subtree in modes B/C, the main checkout's
+    `.claude/` in mode A. `None` keeps the resolution above.
     """
     root = resolve_project_root(project_dir)
+    wt = linked_worktree(project_dir) if scope in ("checkout", "project") else None
     if root == project_dir:
+        if scope == "project" and wt is not None:
+            return os.path.join(wt["main"], wt["subpath"], ".claude", filename)
         return os.path.join(project_dir, ".claude", filename)
+    if scope == "checkout" and wt is not None:
+        return os.path.join(root, WORKTREE_STATE_DIR, wt["admin"], filename)
     return os.path.join(root, filename)
 
 
@@ -552,13 +733,24 @@ def describe(project_dir: str) -> dict:
         "install": {key: config[key] for key in ("install_mode", "prefix") if key in config},
         "project_config": load_project_config(project_dir),
         "main_integration_branch": main_integration_branch(project_dir) if subtree is not None or mode == "A" else None,
+        "worktrees_root": get_worktrees_root(project_dir),
+        "worktree": linked_worktree(project_dir),
     }
 
 
 if __name__ == "__main__":
+    default_target = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     if len(sys.argv) >= 2 and sys.argv[1] == "describe":
-        target = sys.argv[2] if len(sys.argv) >= 3 else os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+        target = sys.argv[2] if len(sys.argv) >= 3 else default_target
         print(json.dumps(describe(target), indent=2))
         sys.exit(0)
-    print("usage: python _project_paths.py describe [project_dir]", file=sys.stderr)
+    if len(sys.argv) >= 3 and sys.argv[1] == "worktree-path":
+        target = sys.argv[3] if len(sys.argv) >= 4 else default_target
+        # A plain path, not JSON-escaped like `describe`: on Windows a piped
+        # stdout defaults to cp1252 and would mangle `Área de Trabalho`.
+        sys.stdout.reconfigure(encoding="utf-8")
+        print(worktree_path(target, sys.argv[2]))
+        sys.exit(0)
+    print("usage: python _project_paths.py describe [project_dir]\n"
+          "       python _project_paths.py worktree-path <short-name> [project_dir]", file=sys.stderr)
     sys.exit(2)

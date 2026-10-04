@@ -29,3 +29,4 @@ format.
 | 0019 | [Architecture docs get a lifecycle, routing frontmatter and a census engine](0019-living-architecture-docs.md) | accepted | — | — |
 | 0020 | [A fast lane, cheaper gates and a per-project review policy](0020-proportional-pipeline-cost.md) | accepted | — | — |
 | 0021 | [The framework's own specs and ADRs live in `evolution/`, outside the shipped skeleton](0021-separate-evolution-from-skeleton.md) | accepted | — | — |
+| 0022 | [A linked worktree is its main checkout's project, with per-checkout state](0022-worktree-sessions.md) | accepted | — | — |

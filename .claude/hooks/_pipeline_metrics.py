@@ -17,19 +17,73 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import state_file_path  # noqa: E402
+from _project_paths import linked_worktree, state_file_path  # noqa: E402
 
 LOG_FILENAME = "pipeline-metrics.jsonl"
+LOCK_WAIT = 1.0  # seconds; a stuck lock must never block a hook
+_LOCK_OFFSET = 1 << 30  # Windows locks a byte range; far from any real line
+
+
+def _lock(f) -> bool:
+    """Advisory exclusive lock on the open log, bounded wait. False on
+    timeout or when locking is unavailable: the caller appends anyway."""
+    deadline = time.monotonic() + LOCK_WAIT
+    while True:
+        try:
+            if os.name == "nt":
+                import msvcrt
+                f.seek(_LOCK_OFFSET)
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except ImportError:
+            return False
+        except OSError:
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
+
+
+def _unlock(f) -> None:
+    try:
+        if os.name == "nt":
+            import msvcrt
+            f.seek(_LOCK_OFFSET)
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    except (ImportError, OSError):
+        pass
 
 
 def log_event(project: str, event: str, **fields) -> None:
     """`project` is this session's CLAUDE_PROJECT_DIR; where the log
     actually lands is resolved from it, not assumed to be under it.
+
+    The log is project-scoped: every checkout of a project (linked
+    worktrees included) appends to the same file, and an event from a
+    linked worktree carries `checkout` (its admin name) so `metrics.py`
+    can tell concurrent features apart (framework ADR 0022 section 3).
+    Appends take an advisory lock; on timeout the line is written anyway.
     """
     record = {"ts": time.time(), "event": event, **fields}
-    path = state_file_path(project, LOG_FILENAME)
+    wt = linked_worktree(project)
+    if wt:
+        record["checkout"] = wt["admin"]
+    path = state_file_path(project, LOG_FILENAME, "project")
+    data = (json.dumps(record) + "\n").encode("utf-8")
     try:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record) + "\n")
+        with open(path, "ab") as f:
+            locked = _lock(f)
+            try:
+                f.seek(0, os.SEEK_END)
+                f.write(data)
+                f.flush()
+            finally:
+                if locked:
+                    _unlock(f)
     except OSError:
         pass

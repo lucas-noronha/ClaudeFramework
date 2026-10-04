@@ -8,6 +8,8 @@
 .claude/session-handoff.md
 .claude/.plugin-gap-dismissed.json
 .claude/pipeline-metrics.jsonl
+.claude/framework.local.json
+.claude/projects.local.json
 
 # Python hook execution artifacts (only appear if a hook is run/tested directly)
 .claude/**/__pycache__/
@@ -24,3 +26,4 @@ evolution/session-handoff.md
 evolution/pipeline-metrics.jsonl
 evolution/settings.local.json
 evolution/.plugin-gap-dismissed.json
+evolution/.worktree-state/

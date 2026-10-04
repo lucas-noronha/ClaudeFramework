@@ -26,6 +26,13 @@ you run several specs' sweeps at the same time, each in its own
 worktree/session, without them colliding on the same working tree or
 the same deterministic build/test gate.
 
+Where the worktree lands is a per-machine choice made in
+`/setup-framework`: with a worktrees root configured it's
+`<worktrees root>/<repo folder name>/<short-name>`, otherwise the
+sibling `../<short-name>`. Worth setting when the repo sits in a synced
+folder (OneDrive, Dropbox), where every build output in every worktree
+would otherwise sync too.
+
 Isolation stops at the spec, deliberately — a single task never gets a
 worktree of its own, no matter how large. Every task in a spec's
 `/implement` sweep shares that one worktree, isolated from its siblings
@@ -34,6 +41,33 @@ splitting further would trade a session hand-off per task for isolation
 this framework doesn't think is worth that cost. The actual goal —
 several *specs* running at once without racing on the same working
 tree — is already fully met at the spec level alone.
+
+## Worktree sessions in every adoption mode
+
+A worktree session works in modes A, B and C (framework ADR 0022).
+The hooks resolve a linked worktree to its main checkout from git's own
+files, so the project's registration, docs and per-machine settings
+(`framework.local.json`) are found without re-registering anything. In
+a worktree, handoff notes are kept per checkout and the metrics log per
+project, with each event tagged by its `checkout`, so `/metrics`
+attributes cost per worktree. `session_brief` names the repo and branch
+when you start in one.
+
+- **Mode A:** nothing to link; the worktree carries its own `.claude/`
+  and `docs/`. `/worktree` offers to copy `settings.local.json`.
+- **Mode B:** `.claude`, `docs` and `CLAUDE.md` are links into the
+  AI-repo, which a fresh worktree of the code repo doesn't have.
+  `/worktree` runs `.claude/scripts/link_worktree.py <worktree>` to
+  mirror them (plus an anchored `info/exclude` entry). `--dry-run`
+  shows what it would do; `--repair` re-creates links in a worktree
+  that lost them (e.g. after a sync tool or a fresh clone). It refuses
+  a worktree placed inside the AI-repo.
+- **Mode C:** no links; the registration gate simply opens inside a
+  worktree of a registered repo.
+
+Claude Code's own `--worktree` is the exception in mode B: because
+`.claude` is a link, it lands inside the AI-repo's `.claude/worktrees/`.
+Use `/worktree`; `.claude/worktrees/` is gitignored as a safety net.
 
 Don't use subagent `isolation: worktree` or an automatic `--worktree`
 flag for this — `/worktree` exists specifically because those tools'

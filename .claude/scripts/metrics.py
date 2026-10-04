@@ -19,7 +19,10 @@ It then shows each feature, and the two lanes side by side, so a project
 chooses its `review_policy` and its lane from data (AC-05). Features
 overlapping in time (parallel sessions on one project) can't be told
 apart from one log; events are attributed to the most recently started
-open feature, and the report says when that happened.
+open feature, and the report says when that happened. Features open in
+different checkouts (linked worktrees, framework ADR 0022 section 3) are
+told apart by the events' `checkout` stamp; an event without one is the
+main checkout's.
 """
 import argparse
 import json
@@ -37,7 +40,7 @@ LANES = ("full", "fast")
 def read_events(project: str):
     events = []
     try:
-        with open(state_file_path(project, LOG_FILENAME), encoding="utf-8") as f:
+        with open(state_file_path(project, LOG_FILENAME, "project"), encoding="utf-8") as f:
             for line in f:
                 try:
                     events.append(json.loads(line))
@@ -49,29 +52,32 @@ def read_events(project: str):
 
 
 def summarize(events):
-    features, open_stack, overlapped = {}, [], set()
+    features, stacks, overlapped = {}, {}, set()
     for event in events:
         kind = event.get("event")
+        checkout = event.get("checkout") or "main"
+        open_stack = stacks.setdefault(checkout, [])
         if kind == "feature_started":
             fid = event.get("feature")
+            key = (checkout, fid)
             if open_stack:
-                overlapped.add(fid)
-                overlapped.add(open_stack[-1])
-            features[fid] = {"feature": fid, "lane": event.get("lane"), "tier": event.get("tier"),
+                overlapped.add(key)
+                overlapped.add((checkout, open_stack[-1]))
+            features[key] = {"feature": fid, "checkout": checkout, "lane": event.get("lane"), "tier": event.get("tier"),
                              "subagents": 0, "gate_runs": 0, "gate_failures": 0,
                              "approved": 0, "returned": 0, "finished": False}
             open_stack.append(fid)
             continue
         if kind == "feature_finished":
             fid = event.get("feature")
-            if fid in features:
-                features[fid]["finished"] = True
+            if (checkout, fid) in features:
+                features[(checkout, fid)]["finished"] = True
             if fid in open_stack:
                 open_stack.remove(fid)
             continue
         if not open_stack:
             continue
-        current = features[open_stack[-1]]
+        current = features[(checkout, open_stack[-1])]
         if kind == "subagent_dispatched":
             current["subagents"] += 1
         elif kind == "gate_run":
@@ -84,7 +90,7 @@ def summarize(events):
     rows = []
     for feature in features.values():
         feature["rework"] = feature["gate_failures"] + feature["returned"]
-        feature["overlapped"] = feature["feature"] in overlapped
+        feature["overlapped"] = (feature["checkout"], feature["feature"]) in overlapped
         rows.append(feature)
 
     lanes = {}
@@ -107,7 +113,8 @@ def render(rows, lanes) -> str:
     lines = [head, "|---|---|---|---|---|---|---|---|"]
     for r in rows:
         flag = " ⚠ overlapped" if r["overlapped"] else ""
-        lines.append(f"| {r['feature']}{flag} | {r['lane']} | {r['tier'] or '—'} | {r['subagents']} | {r['gate_runs']} | "
+        where = f" ({r['checkout']})" if r["checkout"] != "main" else ""
+        lines.append(f"| {r['feature']}{where}{flag} | {r['lane']} | {r['tier'] or '—'} | {r['subagents']} | {r['gate_runs']} | "
                      f"{r['gate_failures']} | {r['approved']}/{r['returned']} | {r['rework']} |")
     if lanes:
         lines += ["", "| Lane | Features | Avg subagents | Avg gate runs | Avg reviewer returns | Avg rework |",

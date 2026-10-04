@@ -70,7 +70,7 @@ Two modes, based on $ARGUMENTS.
 
 When single-task mode is called on its own (not from orchestration
 mode), wrap it in the feature markers described in orchestration mode's
-step 0, using the task's spec id.
+step 1b, using the task's spec id.
 
 ## Orchestration mode — $ARGUMENTS names a spec, not one task
 
@@ -81,18 +81,12 @@ Runs every remaining (unchecked) task in that spec's "## Tasks" section
 to completion, respecting the dependency graph `/tasks` recorded (see
 framework ADR 0004):
 
-0. **Feature markers** (framework ADR 0020): before the first wave run
-   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" start --feature <spec id> --lane <fast if the spec has lite: true, else full> --tier <the spec's tier>`,
-   and after the last one (or when the sweep stops) `metrics.py finish
-   --feature <spec id>`. They let `/metrics` attribute subagents, gate
-   runs and reviewer verdicts to this feature.
-
 1. **Worktree check** (see
    framework ADR 0005): run `git worktree
    list` and look for a branch named `task/<spec-short-name>` (matching
    this spec's own filename slug).
    - If the **current** session's working directory already is that
-     worktree: continue to step 2, nothing else changes.
+     worktree: continue to step 1b, nothing else changes.
    - If it doesn't exist yet: ask (`AskUserQuestion`) whether to isolate
      this spec's implementation in its own worktree before starting —
      worth it if you'll run other specs' `/implement` at the same time,
@@ -106,12 +100,20 @@ framework ADR 0004):
      continue the sweep from this session: this framework's hooks
      (build/test gate, spec tracking) are wired to *this* session's
      `${CLAUDE_PROJECT_DIR}`, not the new worktree. If no: continue to
-     step 2 in the current working tree.
+     step 1b in the current working tree.
    - If a worktree already exists for this spec but this session isn't
      in it: **warn and stop** — point at the existing worktree path
      instead of silently sweeping in the wrong tree, where the
      build/test gate and spec-tracking hooks would be checking the
      wrong files entirely.
+1b. **Feature markers** (framework ADR 0020): once the worktree check lets
+   the sweep continue here (never before it: a session that stops to hand
+   off to a worktree must not open a feature that the worktree's own
+   `/implement` would open again), before the first wave run
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" start --feature <spec id> --lane <fast if the spec has lite: true, else full> --tier <the spec's tier>`,
+   and after the last one (or when the sweep stops) `metrics.py finish
+   --feature <spec id>`. They let `/metrics` attribute subagents, gate
+   runs and reviewer verdicts to this feature.
 2. Read the "## Tasks" section; parse each unchecked task's **Depends
    on** field. Treat a missing or unclear dependency note as "depends
    on every earlier task" — never infer parallel-safety from a task's

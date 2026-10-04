@@ -1,6 +1,6 @@
 ---
 description: Single entry point for adopting or maintaining this framework in a project — opens by choosing one of three mutually exclusive adoption modes (direct in-repo, external AI-repo, or user-level multi-project), then runs only that mode's
-domains: bootstrapping CLAUDE.md and settings from the copied skeleton, installing recommended global plugins, merging framework scaffolding files into this repo without clobbering what's already there, optionally drafting the architecture blank slots from the existing codebase's own detected patterns, linking a separate target code repo to this AI-repo with zero footprint there (Domain 5), or merging the machinery into `~/.claude` for every project on this machine (Domain 6). Add new setup domains here as the framework grows rather than creating a new top-level command per domain.
+domains: bootstrapping CLAUDE.md and settings from the copied skeleton, installing recommended global plugins, merging framework scaffolding files into this repo without clobbering what's already there, optionally drafting the architecture blank slots from the existing codebase's own detected patterns, linking a separate target code repo to this AI-repo with zero footprint there (Domain 5), or merging the machinery into `~/.claude` for every project on this machine (Domain 6), and choosing the per-machine folder spec worktrees are created under (Domain 7). Add new setup domains here as the framework grows rather than creating a new top-level command per domain.
 ---
 
 **Start with the adoption-mode question below — it decides which
@@ -105,6 +105,9 @@ layout. Say that out loud when you ask.
 4. Domain 2 (global plugins) is the one exception to that routing:
    enabled plugins are per machine, not per repo, so offer it in *any*
    mode — after that mode's own domains in B and C.
+5. Domain 7 (where spec worktrees live) closes modes A and B. Mode C
+   asks the same question inside Domain 6's batch instead, because there
+   the installer owns the config file it lands in.
 
 ## Domain 1 — Bootstrap this project from the copied skeleton
 
@@ -872,12 +875,20 @@ project declares in its own config.
        every spec and ADR with it. Say this when offering it.
      - **Any folder you already version or sync** — removes that risk,
        and nothing in the mechanism cares where subtrees sit.
+   - **Worktrees root** — the folder `/worktree` creates every spec
+     worktree under, as `<root>/<repo folder name>/<short-name>`. Offer
+     the same choices as Domain 7 step 2 (sibling of the repo, a
+     suggested dedicated folder, or another path). On an upgrade, offer
+     the `worktrees_root` already in `framework.json` as the default.
+     Domain 7's step 6 offer (root `CLAUDE.md` note) applies here too.
    - **Anything to retire** — only if the dry run shows a collision
      with something the user wants out of the way. `--retire <path>`
      moves it into `~/.claude/<prefix>/backups/retired/`; the
      uninstaller lists it and can restore it.
 3. **Dry run** and show the result:
-   `python .claude/scripts/install_user_level.py --prefix <p> --projects-root "<root>"`.
+   `python .claude/scripts/install_user_level.py --prefix <p> --projects-root "<root>" [--worktrees-root "<folder>"]`
+   (leave the flag out to keep the current value; `--worktrees-root ""`
+   goes back to sibling worktrees).
    It lists every file it would create, update or keep, the
    `settings.json` additions, and any legacy pre-namespace install it
    found. A collision or a hand-edited installed file makes it refuse.
@@ -904,6 +915,7 @@ project declares in its own config.
      kept; what `settings.json` gained (and that uninstall restores it
      byte for byte).
    - The projects root, and whether it carries the default's backup risk.
+   - The worktrees root, or that spec worktrees sit beside their repo.
    - That **no code repo was touched** — and that hooks do nothing in a
      repo until it's registered.
    - **Loudest:** unless step 5 ran, no project is registered and none
@@ -920,6 +932,110 @@ as collisions. Run that install's own uninstaller first (dry run, then
 apply) — it keeps the registry and project subtrees — and then install.
 A kept registry and kept project subtrees in the namespace are adopted,
 not treated as collisions.
+
+## Domain 7 — Where spec worktrees live (per machine)
+
+Goal: choose the folder `/worktree` (and `/implement`, which reuses its
+steps) creates every spec worktree under, so they don't land wherever
+the repo happens to sit. Runs in modes A and B, after that mode's
+domains. Mode C asks the same question in Domain 6 step 2.
+
+The choice is **per machine, never per project**: it's an absolute path
+on this disk, so it never goes in the committed `project-config.json`.
+It lives in `.claude/framework.local.json` (gitignored), in the
+`.claude/` that holds the hooks: this repo's own in mode A, the
+AI-repo's in mode B. In mode B one value therefore covers every target
+repo linked to it. Each worktree lands at
+`<root>/<repo folder name>/<short-name>`. The repo level keeps two
+projects' same-named specs apart.
+
+1. **Detect.** Run
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/_project_paths.py" describe`
+   and read `worktrees_root`. Set → offer it as the default ("keep").
+   Unset → worktrees currently go beside the repo (`../<short-name>`).
+2. **Ask** (`AskUserQuestion`, one question), saying where a sample
+   spec would land under each option:
+   - **Beside the repo (`../<short-name>`)** — the original layout.
+     Nothing is written. Fine for one repo, but it fills the repo's
+     parent folder with one folder per spec in flight.
+   - **A dedicated folder (suggested)** — suggest
+     `<repo's parent>/worktrees`. **If the repo sits inside a synced
+     folder** (a path under OneDrive, Dropbox, Google Drive or iCloud),
+     say so, and suggest a folder outside it instead (e.g. `C:/dev/worktrees`
+     on Windows, `~/dev/worktrees` elsewhere). Otherwise every
+     worktree's build output and dependencies sync too.
+   - **Another folder** — free text.
+3. **Validate** before writing. The path must be absolute; expand `~`
+   yourself. It must not be inside this repo or, in mode B, inside a
+   linked target repo: a worktree nested in its own repo shows up as
+   untracked content there. It doesn't need to exist yet, since
+   `git worktree add` creates missing parents. Where it may sit depends
+   on the mode:
+   - **Mode A:** any drive, because git worktrees don't need the same
+     volume and nothing is linked into them.
+   - **Mode B:** each worktree there gets `.claude`, `docs` and
+     `CLAUDE.md` linked in by `link_worktree.py` (framework ADR 0022), so
+     check the root can hold them. On the same volume as the AI-repo
+     everything works. On another local NTFS volume junctions still
+     reach `.claude` and `docs`, but the hard-linked `CLAUDE.md` needs
+     the same volume, so unless symlinks are available there, steer the
+     user to a root on the AI-repo's volume. A network drive or exFAT
+     can't hold junctions at all: refuse it. (This reverses mode A's
+     "any drive" for mode B only.)
+4. **Write**, after confirming the exact JSON (`AskUserQuestion`).
+   Read `.claude/framework.local.json` if it exists and set only
+   `worktrees_root`, preserving every other key; create it as
+   `{"worktrees_root": "<path, forward slashes>"}` if not. "Beside the
+   repo" removes the key, and deletes the file only if nothing else is
+   left in it. If the file exists but doesn't parse, stop and report
+   it; don't overwrite it.
+5. **Gitignore check.** The file must never be committed. In mode A,
+   Domain 3's merge already brings in `.claude/framework.local.json`
+   from `.gitignore.framework-additions`. In mode B, check the
+   AI-repo's own `.gitignore` covers it, and if not, offer the one-line
+   addition (show it, then confirm).
+6. **Optional — worktrees-root `CLAUDE.md` bootstrap note.** Offered
+   whenever a worktrees root was set in step 4, in every mode (skip it
+   for "beside the repo"). A session started inside a worktree whose
+   links are missing has no framework config, so this file, which it
+   auto-loads by walking up the directory tree, is what tells it so.
+   Same append-only, confirm-first discipline as Domain 5 step 10:
+   - Path: `<worktrees_root>/CLAUDE.md`.
+   - **Doesn't exist**: create it from this template, filling `{{DATE}}`
+     and `{{AI_REPO_NAME}}` (the repo holding `.claude/scripts/`: this
+     repo in mode A, the AI-repo in mode B):
+
+     ```markdown
+     # Spec worktrees — notes
+
+     Created {{DATE}} by `/setup-framework` (Domain 7). This file sits
+     above every spec worktree and loads automatically for any Claude
+     Code session started inside one, via directory-tree walking
+     (framework ADR 0022).
+
+     ## AI framework setup checks
+
+     Before doing anything else in a session started inside a worktree
+     here: confirm its `.claude`, `docs` and `CLAUDE.md` exist as real
+     links into `{{AI_REPO_NAME}}` (not missing, not empty real
+     folders/files). If any aren't, STOP — do not proceed with the
+     user's request — and tell the developer to run
+     `python "<ai-repo>/.claude/scripts/link_worktree.py" --repair` from
+     the main checkout (`<ai-repo>` is the path to `{{AI_REPO_NAME}}`)
+     to relink the worktree before continuing.
+     ```
+
+   - **Already exists**: if it has no `## AI framework setup checks`
+     heading, append the heading and paragraph above; if it has one,
+     append the paragraph only when no paragraph there already mentions
+     `link_worktree.py`. Never touch anything else in the file.
+   - Always show the exact text being added and get explicit
+     confirmation (`AskUserQuestion`) before writing.
+
+Declining leaves worktrees beside the repo, exactly as before this
+domain existed. Re-run it any time to move future worktrees. Existing
+worktrees stay where they are (`git worktree move` relocates one by
+hand).
 
 <!--
 ## Domain N — <name>
@@ -969,10 +1085,17 @@ all — the state of the two architecture files:
   `.claude/projects.local.json` is committed anywhere, so both must be
   recreated on any fresh machine or fresh clone/checkout of the target
   repo.
+- If Domain 7 ran: the worktrees root written to
+  `.claude/framework.local.json` (and an example path a spec would get),
+  or that worktrees stay beside the repo — and that the choice is per
+  machine, so a teammate or a fresh machine makes its own. In mode B,
+  whether the root can hold the links (same volume or symlinks). Also
+  whether the `<worktrees_root>/CLAUDE.md` bootstrap note was created,
+  appended, already covered or declined.
 - If Domain 6 ran: the prefix and namespace installed into, what the
   installer created/updated/kept (and any collision it refused on), what
   `settings.json` gained, the chosen projects root and whether it carries
-  the default's backup risk, whether bulk registration or a migration
+  the default's backup risk, the worktrees root (or none), whether bulk registration or a migration
   ran — and, loudest, that unless they did, **no project was
   registered and none needs to be**: the first `/<prefix>-*` pipeline
   command run in an unregistered repo registers it on the spot.

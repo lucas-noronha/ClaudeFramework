@@ -49,7 +49,10 @@ def main() -> None:
     # `.claude/` this would otherwise be one physical file for every
     # target repo (framework ADR 0013), so it follows the project, not the config
     # directory. session_brief.py reads back from the same resolution.
-    with open(state_file_path(project, HANDOFF_FILENAME), "w", encoding="utf-8") as f:
+    # "checkout" scope: each worktree keeps its own handoff (framework ADR 0022).
+    path = state_file_path(project, HANDOFF_FILENAME, "checkout")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
 

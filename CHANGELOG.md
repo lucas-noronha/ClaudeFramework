@@ -72,6 +72,30 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
   the frontmatter itself, listing any unchecked stakeholder-validation
   items first. Nobody edits `status: approved` by hand anymore. `/spec`,
   the requirements template and the feature guide say so.
+- **Added — a per-machine worktrees root.** `/setup-framework` now asks
+  where spec worktrees go: Domain 7 in modes A/B, written to the
+  gitignored `.claude/framework.local.json`, or Domain 6's batch in
+  mode C (`install_user_level.py --worktrees-root`, kept across
+  upgrades). `/worktree` resolves the path with
+  `_project_paths.py worktree-path <short-name>` →
+  `<root>/<repo folder name>/<short-name>`. With no root set it stays
+  `../<short-name>`, as before. Useful for keeping worktrees out of a
+  synced folder such as OneDrive. Covered by `tests/test_worktrees_root.py`.
+- **Added — worktree sessions in every adoption mode.** A linked
+  worktree now resolves to its main checkout from git's own files
+  (`_project_paths.py`), so hooks, registration and `framework.local.json`
+  work inside it. Handoff is kept per checkout, metrics per project with a
+  `checkout` tag so `/metrics` attributes per worktree; `session_brief`
+  names repo and branch. New `.claude/scripts/link_worktree.py`
+  (`--dry-run`, `--repair`) mirrors mode B's `.claude`/`docs`/`CLAUDE.md`
+  links into the worktree; `/worktree` runs it and offers copying
+  `settings.local.json` in mode A. Mode C's registration gate opens in a
+  worktree of a registered repo. `/setup-framework` Domain 7 checks the
+  mode B volume/symlinks. Claude Code's own `--worktree` in mode B lands
+  in the AI-repo's `.claude/worktrees/` (now gitignored); `/worktree` is
+  the supported path. See
+  [spec 0004](evolution/product/specs/0004-worktree-sessions.md) and
+  [ADR 0022](evolution/decisions/0022-worktree-sessions.md).
 
 ### Upgrade notes (read before adopting)
 

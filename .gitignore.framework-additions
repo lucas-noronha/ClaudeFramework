@@ -14,6 +14,10 @@
 # harmful — on anyone else's checkout. Same lifecycle as settings.local.json.
 .claude/projects.local.json
 
+# Per-machine framework settings (e.g. the worktrees root chosen in
+# /setup-framework Domain 7) — absolute paths on this disk, never shared.
+.claude/framework.local.json
+
 # Per-project operational state under docs/<name>/ (framework ADR 0013, layout per
 # framework ADR 0015 — there is no projects/ folder; each project nests inside the
 # one shared docs/ tree). In multi-project modes these four files move out
@@ -25,3 +29,9 @@ docs/*/session-handoff.md
 docs/*/pipeline-metrics.jsonl
 docs/*/settings.local.json
 docs/*/.plugin-gap-dismissed.json
+
+# Per-worktree shared state under each project subtree (framework ADR 0022):
+# machine-local, linked into worktrees by link_worktree.py, grows per machine.
+docs/*/.worktree-state/
+# Claude Code's own worktrees (mode B); never project content.
+.claude/worktrees/

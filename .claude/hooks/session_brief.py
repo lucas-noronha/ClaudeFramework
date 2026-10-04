@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import hook_should_run, resolve_docs_root, state_file_path  # noqa: E402
+from _project_paths import hook_should_run, linked_worktree, resolve_docs_root, state_file_path  # noqa: E402
 
 HANDOFF_CHAR_LIMIT = 800  # bound the cost of a stale/verbose last_assistant_message
 
@@ -37,7 +37,7 @@ def main() -> None:
         git_status = ""
 
     handoff = ""
-    handoff_path = state_file_path(project, "session-handoff.md")
+    handoff_path = state_file_path(project, "session-handoff.md", "checkout")
     try:
         with open(handoff_path, encoding="utf-8") as f:
             raw = f.read()
@@ -64,7 +64,14 @@ def main() -> None:
         if status and status not in ("implemented", "abandoned"):
             pending.append(f"{os.path.basename(path)}: {status}")
 
-    lines = [
+    lines = []
+    # A worktree session opens by naming its repo and spec branch (framework ADR 0022).
+    worktree = linked_worktree(project)
+    if worktree:
+        branch = worktree.get("branch") or "(detached HEAD)"
+        repo_name = os.path.basename(os.path.normpath(worktree.get("main") or "")) or "(unknown)"
+        lines.append(f"Worktree session: repo {repo_name}, branch {branch}")
+    lines += [
         "Git status: " + (git_status if git_status else "(clean)"),
         "Specs not yet implemented: " + ("; ".join(pending) if pending else "(none)"),
     ]
