@@ -39,7 +39,8 @@ From the description in $ARGUMENTS:
    than formalizing it silently. **There can be two of them, and you
    read both whenever both exist** (see
    `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
-   - the supreme `docs/constitution.md` at the **shared** `docs/` root
+   - the supreme layer at the **shared** `docs/` root —
+     `docs/constitution-baseline.md` plus `docs/constitution.md` (ADR 0018) —
      (the one `project-registration`'s step 4 points you at for shared
      material) — always, and it is a non-negotiable floor;
    - `<project-subtree>/constitution.md` — the project's own
@@ -49,8 +50,8 @@ From the description in $ARGUMENTS:
      the supreme one as binding and raise the contradiction as an
      "unclear, ask" item; never silently reconcile the two.
    In **mode A** (`project-registration` stopped at its step 1 — no
-   registry entry, relative paths unchanged) there is exactly one
-   constitution, `docs/constitution.md`, and this step is today's
+   registry entry, relative paths unchanged) there is no project layer,
+   just the supreme pair in the repo's own `docs/`, and this step is today's
    single-file check, unchanged.
 4. **Area and lineage, automatically — never ask the human to tag
    this** (see `docs/decisions/0008-spec-area-lineage.md`): read
@@ -91,8 +92,8 @@ From the description in $ARGUMENTS:
 End by reminding the user that the next step is validating the
 `.validation-{{STAKEHOLDER_LANG_CODE}}.md` file (or the canonical file
 directly, if no split applies) with the stakeholder outside the chat,
-updating `status` to `approved` in the **canonical** file once
-approved, and only then running `/plan`. If the feature gets dropped
-instead — before or during implementation — `status` becomes
-`abandoned` (set by hand, at any point); see the frontmatter note in
+and then running `/plan`: it asks whether to approve the spec and flips
+`status` to `approved` itself, so there is nothing to edit by hand. If
+the feature gets dropped instead, `/plan` offers that too, or `status`
+becomes `abandoned` by hand at any point; see the frontmatter note in
 `docs/product/requirements-template.md` for the full status set.

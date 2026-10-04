@@ -1,6 +1,8 @@
 ---
 doc_type: architecture
 scope: module-structure
+resumo: What may depend on what in the backend, and where new code goes?
+naoResponde: Frontend structure, or how a single feature works end to end.
 status: active
 last_updated: {{DATE}}
 context_budget: ~fill in once written
@@ -16,6 +18,16 @@ and `reviewer` can check dependency violations against it
 mechanically, instead of relying on tribal knowledge. Delete this file
 (and its row in `CLAUDE.md`'s index) if it doesn't apply — e.g. a
 single small app with no internal module boundaries worth documenting.
+
+**How this doc stays true (ADR 0019).** It describes the code; it
+doesn't prescribe what the code should become. A deviation is never a
+pattern to copy: mark it as `> **Pitfall:**`, `> **Convention:**` or
+`> **Finding (needs a decision):**`, and give a finding (and any
+checkable dependency rule) a census probe. No inventory counts in prose —
+counts live in the census. A version derived automatically starts
+`status: draft` with a banner; `coder`/`reviewer` treat its rules as
+advisory until `/update-docs promote` verifies them against code. See
+`docs/workflow/living-architecture-docs.md`.
 
 ## Layout
 

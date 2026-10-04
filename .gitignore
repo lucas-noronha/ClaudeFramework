@@ -10,8 +10,9 @@
 .claude/pipeline-metrics.jsonl
 
 # Python hook execution artifacts (only appear if a hook is run/tested directly)
-.claude/hooks/__pycache__/
-.claude/hooks/*.pyc
+.claude/**/__pycache__/
+.claude/**/*.pyc
+tests/__pycache__/
 
 # OS/editor noise
 .DS_Store

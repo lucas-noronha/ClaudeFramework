@@ -33,7 +33,8 @@ Full rationale → `docs/decisions/`.
 
 | I need... | File | ~Cost |
 |---|---|---|
-| Non-negotiable principles (secrets, security baseline, project-specific) — supreme, checked by `/spec`/`/plan`/`coder`/`quickfix`/`reviewer` | `docs/constitution.md` | ~500 tok |
+| Framework baseline principles I–V (secrets, logging, input validation, least privilege, dependencies) — supreme, replaced on framework upgrades, never edited here | `docs/constitution-baseline.md` | ~400 tok |
+| This organization's/project's own non-negotiables (VI onward) — supreme together with the baseline, checked by `/spec`/`/plan`/`coder`/`quickfix`/`reviewer` | `docs/constitution.md` | ~450 tok |
 | Architecture overview | `docs/architecture/overview.md` | ~400 tok |
 | Module/service structure and dependency rules (if applicable — blank slot, fill in or delete) | `docs/architecture/module-structure.md` | ~fill in |
 | Frontend structure and dependency rules (if applicable — blank slot, fill in or delete) | `docs/architecture/frontend.md` | ~fill in |
@@ -49,6 +50,7 @@ Full rationale → `docs/decisions/`.
 | Which model tier a subagent should use | `docs/workflow/model-tiering.md` | ~500 tok |
 | Which global plugins are Core vs Optional for this project | `docs/workflow/plugin-integrations.md` | ~1550 tok |
 | Constitution enforcement, spec lineage, reconciliation, pipeline metrics — how they fit together | `docs/workflow/governance-and-observability.md` | ~950 tok |
+| How do architecture docs stay true to the code, and what may an agent take from them? | `docs/workflow/living-architecture-docs.md` | ~1100 tok |
 | Technical terms and definitions | `docs/glossary.md` | ~300 tok |
 
 Add a row here for every architecture doc your project actually needs
@@ -74,7 +76,10 @@ overview only when nothing more specific fits.
   — same expectations, lighter model.
 - `.claude/commands/` — slash commands (`/spec`, `/plan`, `/tasks`,
   `/implement`, `/review`, `/adr`), the pipeline's deterministic entry
-  points; `/reconcile` to run an on-demand spec-vs-code fidelity sweep
+  points; `/quick` for a change too small for the full chain (trivial →
+  straight fix, standard → one-file lite spec); `/update-docs` to bring
+  architecture docs back in line with the code (census projects);
+  `/metrics` for what each feature cost; `/reconcile` to run an on-demand spec-vs-code fidelity sweep
   against any already-`implemented` spec, any time; `/worktree` to
   isolate a task in parallel from `origin/{{MAIN_INTEGRATION_BRANCH}}`;
   `/setup-framework` to adopt or maintain this framework itself
@@ -107,7 +112,8 @@ Full rationale → `docs/decisions/0001-tooling-agents-commands-skills.md`.
 
 ## Conventions for any agent working in this repo
 
-1. **`docs/constitution.md` is supreme, if it exists.** No spec,
+1. **The constitution is supreme** — `docs/constitution-baseline.md`
+   plus `docs/constitution.md`, whichever exist. No spec,
    technical plan, or code may knowingly contradict a principle there.
    A conflict gets flagged explicitly, never silently worked around —
    see the file's own Governance section for how it's amended (never a
@@ -129,7 +135,12 @@ Full rationale → `docs/decisions/0001-tooling-agents-commands-skills.md`.
 5. When generating code, the agent should cite which ADR or
    architecture doc grounds the implementation decision, when
    applicable.
-6. **Context-engineering discipline**: every doc carries a
+6. **Architecture docs describe, they don't prescribe.** An `active`
+   architecture doc is ground truth; a `draft` one is advisory until
+   `/update-docs promote` verifies it. A documented Pitfall, Finding or
+   deviation is never a pattern to copy, and no doc states inventory
+   counts — see `docs/workflow/living-architecture-docs.md`.
+7. **Context-engineering discipline**: every doc carries a
    `context_budget` estimate in its frontmatter. When choosing which
    doc to load, prefer the smallest one that answers the current
    question; load the overview only when nothing narrower applies.

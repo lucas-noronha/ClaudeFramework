@@ -35,6 +35,14 @@ intended, deliberate scope, unlike `/implement`'s per-task pass. Report
 the result (approved or returned with specific findings) directly to
 the user.
 
+If this project's `review_policy` skipped per-task reviews for this
+spec (`final-only`, or `structural-only` on a non-structural spec — see
+`docs/decisions/0020-proportional-pipeline-cost.md`), nothing has written
+the spec's "## Reconciliation" entries yet. Tell `reviewer` so: in this
+pass it first appends one entry per task and declared `FR-NN`/`AC-NN`,
+in the per-task format, and only then checks completeness. A missing
+entry is a finding only once it has had the chance to write them.
+
 If the result is **Approved**:
 
 - If `superpowers` is enabled, mention its

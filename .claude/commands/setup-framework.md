@@ -49,8 +49,11 @@ layout. Say that out loud when you ask.
    - `.claude/projects.local.json` in this repo (and, beside it, one or
      more per-project subtrees at `docs/<name>/`) → mode B; this repo
      is already acting as an AI-repo.
-   - `~/.claude/projects.local.json` exists (expand `~` for the current
-     OS) → mode C is already set up on this machine.
+   - `~/.claude/<prefix>/framework.json` with `install_mode: user-level`
+     (expand `~` for the current OS; the prefix is usually `cfw`) →
+     mode C is already installed on this machine, and this run is an
+     upgrade. A bare `~/.claude/projects.local.json` with no namespace
+     is a pre-ADR-0017 install: say so (see Domain 6's last paragraph).
    - Several at once → say so plainly and ask which one this run is
      about; never assume.
 2. Ask with a single `AskUserQuestion` (one question, three options),
@@ -120,6 +123,20 @@ template/example files that are ready to become the real thing.
    - `{{AZURE_DEVOPS_ORG}}` / `{{AZURE_DEVOPS_PAT_ENV_VAR}}` in
      `docs/workflow/plugin-integrations.md` — a copy-paste example for
      *if* the user adds that MCP later, not this project's own value.
+   - `.claude/settings.multi-project.json.example` as a whole
+     (`{{HOOKS_DIR}}`, `{{PYTHON}}`, `{{PROJECTS_ROOT_PERMISSION_PATH}}`)
+     — a template only Domain 5 and the user-level installer resolve,
+     never Domain 1.
+   - The placeholder *names* quoted in the bodies of this framework's
+     own ADRs (`docs/decisions/0001-*.md` onward) — they discuss
+     placeholders, they aren't slots. Only their frontmatter `{{DATE}}`
+     is filled (step 3).
+
+   The user-level installer (Domain 6) checks its own output against
+   this same list and refuses to install if anything else survives
+   (spec 0001 AC-04): there, the template sources a registration copies
+   per project (`CLAUDE.md.template`, `architecture/*.md.template`,
+   `0000-adr-template.md`) keep their placeholders too.
 2. Resolve each remaining placeholder's value, detecting from the
    repo before asking (show detected values for confirmation rather
    than silently trusting them):
@@ -198,6 +215,30 @@ template/example files that are ready to become the real thing.
 7. Re-run the grep from step 1 over the renamed set — if anything
    still matches outside the excluded files, that's a bug in this
    domain, not something to leave for the user to find later.
+8. Write `.claude/project-config.json` — mode A's machine-readable
+   project config (ADR 0020). It's committed, like a mode B/C subtree's
+   `project-config.json`, and it's what the hooks and scripts read here:
+   the build/test gate (`run_build_test.py`, which `settings.json` now
+   calls instead of holding the command literally), the validation-
+   summary pre-check, the census, `review_policy`, routing-key names and
+   per-project tools. Show it and confirm before writing:
+
+   ```json
+   {
+     "build_test_cmd": "<the value resolved for BUILD_TEST_CMD>",
+     "canonical_lang": "<…>",
+     "stakeholder_lang": "<…>",
+     "stakeholder_lang_code": "<…>",
+     "main_integration_branch": "<the value resolved for MAIN_INTEGRATION_BRANCH>",
+     "review_policy": "per-task",
+     "census": {"enabled": false, "extractor": "none"}
+   }
+   ```
+
+   Offer to enable the census (`docs/workflow/living-architecture-docs.md`)
+   only if the project wants its architecture docs kept honest
+   mechanically — and `dotnet-layered` as the extractor only for a .NET
+   solution. Never put a per-machine or absolute path in this file.
 
 ## Domain 2 — Global plugins
 
@@ -323,13 +364,16 @@ and stays a draft until a human reads it.
    `frontend.md`'s "Layout" / "Dependency rules" / "Where new code
    goes" sections from it and rename `.template` → `.md` (move the
    content, don't leave the template file behind — same convention as
-   Domain 1). Prepend this exact banner right after the frontmatter,
-   before the first heading:
+   Domain 1). Set its frontmatter `status: draft` (ADR 0019: `coder`
+   and `reviewer` treat a draft's rules as advisory until
+   `/update-docs promote` verifies them against code). Prepend this
+   exact banner right after the frontmatter, before the first heading:
 
    ```text
-   > **Detected automatically from existing code on {{DATE}} — read
-   > fully and correct anything wrong before trusting this. `coder` and
-   > `reviewer` treat this file as ground truth.**
+   > **Detected automatically from existing code on {{DATE}} — a draft.
+   > Read fully and correct anything wrong; `coder` and `reviewer` treat
+   > its rules as advisory until `/update-docs promote` verifies them
+   > against the code and marks it `active`.**
    ```
 
 5. Never mark this done the way Domain 1's placeholders are done —
@@ -594,9 +638,17 @@ and why the three links themselves still need none.
        "build_test_cmd": "...",
        "canonical_lang": "...",
        "stakeholder_lang": "...",
-       "stakeholder_lang_code": "..."
+       "stakeholder_lang_code": "...",
+       "main_integration_branch": "<detected from origin/HEAD>",
+       "review_policy": "per-task",
+       "census": {"enabled": false, "extractor": "none"}
      }
      ```
+
+     `main_integration_branch` is what `/worktree`, `/implement` and
+     `/review` use for the integration branch at runtime (spec 0001
+     FR-06); `review_policy` and `census` are ADR 0020's and ADR 0019's
+     per-project switches, defaults shown.
 
      No absolute paths and no per-machine data ever go in this file —
      that's what step 7's file is for.
@@ -620,16 +672,25 @@ and why the three links themselves still need none.
      `.claude/settings.multi-project.json.example` — *not*
      `settings.example.json`, which bakes one project's build/test
      command and language values into static text, impossible for a
-     file shared by several projects (ADR 0013). Resolve its single
-     placeholder: `{{HOOKS_DIR}}` →
-     `${CLAUDE_PROJECT_DIR:-.}/.claude/hooks`, which is correct here
-     precisely because the target repo's `.claude` is a real link to
-     this AI-repo's `.claude`, so that path lands on the shared hooks
-     transparently. Leave the `.example` file itself in place — it's a
-     reusable template for the next AI-repo, not a one-shot rename like
-     Domain 1's.
-   - Confirm with `AskUserQuestion`, showing the resolved
-     `{{HOOKS_DIR}}` value, before writing.
+     file shared by several projects (ADR 0013). Resolve its three
+     placeholders:
+     - `{{HOOKS_DIR}}` → `${CLAUDE_PROJECT_DIR:-.}/.claude/hooks`, which
+       is correct here precisely because the target repo's `.claude` is
+       a real link to this AI-repo's `.claude`, so that path lands on
+       the shared hooks transparently.
+     - `{{PYTHON}}` → `python` (or `python3` where only that exists).
+     - `{{PROJECTS_ROOT_PERMISSION_PATH}}` → `<ai-repo>/docs` in Claude
+       Code's absolute permission form: `//` plus a POSIX path, a Windows
+       drive written `//c/...` (spec 0001 FR-08). A relative rule can't
+       match the absolute subtree paths project content is written to.
+       The template's rule is `Edit(...)` on purpose: Claude Code never
+       uses `Write(path)` rules for file permission checks, and `Edit`
+       covers every file-editing tool (see `.claude/README.md`).
+     Leave the `.example` file itself in place — it's a reusable
+     template for the next AI-repo, not a one-shot rename like Domain
+     1's.
+   - Confirm with `AskUserQuestion`, showing the resolved values, before
+     writing.
    - Worth stating in the close-out: in this variant the deterministic
      gate runs `run_build_test.py`, which reads `build_test_cmd` from
      step 8's file at runtime and propagates its exit code — so the gate
@@ -745,224 +806,123 @@ needs its own principles. Remind the user the three links and
 recreated (re-run this domain) on every fresh machine or fresh
 clone/checkout of the target repo.
 
-## Domain 6 — User-level mode (mode C): merge the machinery into `~/.claude`
+## Domain 6 — User-level mode (mode C): install the machinery into `~/.claude`
 
 Goal: put this framework's machinery where Claude Code already loads it
 for *every* session on this machine — the user-level `~/.claude`
 directory — so no code repo needs a copied file, a link, or any
-footprint at all. Zero footprint in the target repo is automatic here,
-with no symlink/junction mechanism involved.
+footprint at all.
 
-This domain runs **once per machine**, and it configures the machine,
-not a project. Per ADR 0014, individual projects register themselves
-lazily, the first time a pipeline command actually needs one — see step
-8's close-out, which is the part a reader is most likely to assume
-happened here and didn't.
+This domain runs **once per machine** (and again to upgrade), and it
+configures the machine, not a project. Projects register lazily, the
+first time a pipeline command needs one (ADR 0014), or in bulk at the
+end of this domain.
 
-Like Domain 5, this domain's target is **not** this repo — it's this
-machine's user-level config directory, which may already hold personal
-skills, commands and settings that are none of this framework's
-business. The rule throughout: **never clobber an existing file.** Same
-discipline Domain 3 applies to `.gitignore`/`.mcp.json`, generalized
-from a line-merge to a whole-folder merge.
+**All the mechanics live in one script**, `.claude/scripts/install_user_level.py`,
+run from this repository (ADR 0017, spec 0001). This domain asks the
+questions, shows the script's dry run, and only then lets it write.
+The script is what guarantees, mechanically rather than by instruction:
 
-1. Prerequisite check: mode C copies the **real, resolved** machinery
-   this repo has, not templates. Scan `.claude/agents/`,
-   `.claude/commands/`, `.claude/skills/` and `.claude/hooks/` for
-   anything still unresolved — a remaining `*.py.example`
-   (`auto_format.py.example`, `dependency_audit.py.example`) or an
-   unresolved `{{PLACEHOLDER}}` outside Domain 1 step 1's
-   permanent-exclusion list. If any is found, stop and say plainly: run
-   Domain 1 on this repo first, then re-run this domain. Don't rename
-   or resolve anything yourself — that's Domain 1's job, not this
-   one's. (`settings.example.json` is the one exception: mode C never
-   uses it, step 5 uses `.claude/settings.multi-project.json.example`
-   instead.)
-2. Resolve the user-level config directory: `~/.claude`, expanding `~`
-   for the current OS (`%USERPROFILE%\.claude` on Windows,
-   `$HOME/.claude` elsewhere). **If `CLAUDE_CONFIG_DIR` is set on this
-   machine**, stop and say so before doing anything: Claude Code then
-   reads *that* directory instead of `~/.claude`, so anything installed
-   here would simply never be loaded. Per ADR 0014 this framework takes
-   no responsibility for detecting or migrating around that
-   customization from inside a hook — but at setup time it is visible,
-   so offer the choice explicitly (`AskUserQuestion`): install into
-   `$CLAUDE_CONFIG_DIR` instead (in which case every `{{HOOKS_DIR}}`
-   below resolves to that directory's absolute `hooks/` path rather
-   than `~/.claude/hooks`, and the user owns keeping it correct if they
-   move it again), or stop here. Never install into `~/.claude` knowing
-   it won't be read.
-3. Dry-run the merge and show it before touching anything. Build the
-   exact list of files that would be copied:
-   - `.claude/agents/*.md` → `<user config>/agents/`
-   - `.claude/commands/*.md` → `<user config>/commands/`
-   - `.claude/skills/*/` → `<user config>/skills/` (whole skill
-     folders, `SKILL.md` and any reference files). Copy
-     `skills/README.md` only if the destination has none —
-     `skill_index.py` regenerates it from the skills actually present.
-   - `.claude/hooks/*.py` → `<user config>/hooks/` (resolved `.py`
-     files only; step 1 already guaranteed no `.py.example` is left)
-   - **The shared `docs/` root** → `<user config>/docs/`, created once
-     per machine and shared by every project registered later (ADR
-     0015). Exactly this material, and nothing else from this repo's
-     `docs/`:
-     - `docs/constitution.md` → `<user config>/docs/constitution.md`
-       — the supreme, cross-project one (ADR 0007/0015).
-     - `docs/workflow/*` → `<user config>/docs/workflow/`
-     - `docs/glossary.md` → `<user config>/docs/glossary.md`
-     - `docs/product/requirements-template.md` and
-       `docs/product/validation-summary-template.md` →
-       `<user config>/docs/product/`
-     - `docs/architecture/module-structure.md.template` and
-       `frontend.md.template` → `<user config>/docs/architecture/`,
-       and `docs/decisions/0000-adr-template.md` →
-       `<user config>/docs/decisions/`. **Template sources only** —
-       a lazy registration copies these into each new project's own
-       subtree, and in mode C the shared root is the only place it can
-       find them. Do **not** copy this framework's own ADRs
-       (`0001-*.md` onward) or any resolved `architecture/*.md`: those
-       are this repo's content, not a template.
-     - `CLAUDE.md.template` (from this repo's root, if it's still
-       there alongside the resolved `CLAUDE.md`) →
-       `<user config>/CLAUDE.md.template`. Same reason: lazy
-       registration resolves a new project's `CLAUDE.md` from it and
-       has nowhere else to look in mode C. If this repo no longer has
-       it (Domain 1 renames it), say so — registration will then have
-       to ask the user for its path.
+- a **namespace prefix** (default `cfw`): agents, commands and skills
+  land as `cfw-coder`, `/cfw-spec`, `cfw-project-registration`, so they
+  can't collide with a user's own `spec`/`plan`; hooks, scripts, the
+  registry, templates and the shared `docs/` root (with this
+  framework's reference ADRs) live in `~/.claude/<prefix>/`. Every
+  cross-reference in the installed text is rewritten consistently;
+- **absolute hook paths** in `settings.json` — never a quoted `~`, which
+  bash doesn't expand (D1) — and a spec-write permission generated
+  against the absolute projects root (FR-08);
+- **one config source**, `~/.claude/<prefix>/framework.json` (registry,
+  shared root, projects root, template locations). The hooks read it,
+  and the installed `project-registration` skill carries the same values
+  in a generated binding block. Nothing is inferred from folder shape
+  (D12);
+- a **registration gate**: every hook is a no-op in a repo nobody
+  registered, so an unrelated repo gets no `.claude/` file, no index, no
+  build run (D2);
+- **no per-project placeholder** in any installed file: per-project
+  values become runtime tokens the registration skill defines, dates are
+  stamped, and the install aborts if anything else survives (D9, AC-04);
+- a **manifest and an uninstaller** (dry run by default) that remove
+  exactly what was installed and restore `settings.json` byte for byte
+  (D7);
+- **idempotent, never clobbering**: a destination it doesn't own aborts
+  the whole run before anything is written, and so does an installed
+  file someone edited by hand (fix it in this repository first — NFR-01);
+- the **constitution baseline** (`constitution-baseline.md`) is
+  replaced on every upgrade, while the organization layer
+  (`constitution.md`) and `glossary.md` are created once and never
+  overwritten (ADR 0018).
 
-     If `docs/glossary.md` is still `glossary.md.template` here, or
-     `constitution.md` is missing, stop and say so: that's Domain 1
-     unfinished, same as step 1's check.
+There is **no Domain 1 prerequisite** (D8). The installer reads the raw
+skeleton, never installs a `*.py.example` (`auto_format`,
+`dependency_audit` are per-project by nature), and wires
+`project_tools.py` instead, which runs whatever formatter/audit a
+project declares in its own config.
 
-   Classify every file as **new** (nothing of that name at the
-   destination) or **collision** (a file of that name already exists),
-   and present both lists with `AskUserQuestion` before copying
-   anything.
-4. Copy the **new** files. For every **collision**, stop and ask per
-   file — never overwrite, never merge two files' contents:
-   - **Keep mine** (skip this file) — the default. Say plainly what it
-     costs: skipping `commands/spec.md`, for instance, means `/spec`
-     keeps doing whatever the user's existing file does, which breaks
-     the pipeline at that stage rather than degrading it.
-   - **Let me rename mine first** — pause, let the user move their file
-     aside, then re-check that name and copy.
+1. **Config directory.** `~/.claude`, expanding `~` for this OS. **If
+   `CLAUDE_CONFIG_DIR` is set**, stop and say so: Claude Code reads that
+   directory instead. Offer to install there (`--config-dir`) or stop.
+   Never install where it won't be read.
+2. **Ask once** (`AskUserQuestion`, one batch):
+   - **Prefix** — default `cfw`. Explain that every command becomes
+     `/<prefix>-spec`, `/<prefix>-quick`, ...
+   - **Projects root** — where each registered project's `<name>/`
+     subtree is created:
+     - **`~/.claude/<prefix>/docs/`, the default** — nests projects in
+       the shared root exactly as in mode B (ADR 0015). **It sits outside
+       any repository you'd think to version**, so a machine loss takes
+       every spec and ADR with it. Say this when offering it.
+     - **Any folder you already version or sync** — removes that risk,
+       and nothing in the mechanism cares where subtrees sit.
+   - **Anything to retire** — only if the dry run shows a collision
+     with something the user wants out of the way. `--retire <path>`
+     moves it into `~/.claude/<prefix>/backups/retired/`; the
+     uninstaller lists it and can restore it.
+3. **Dry run** and show the result:
+   `python .claude/scripts/install_user_level.py --prefix <p> --projects-root "<root>"`.
+   It lists every file it would create, update or keep, the
+   `settings.json` additions, and any legacy pre-namespace install it
+   found. A collision or a hand-edited installed file makes it refuse.
+   Relay that verbatim and stop until the user resolves it.
+4. **Confirm** (`AskUserQuestion`), then run the same command with
+   `--apply`.
+5. **Optional — register existing repos now** (spec 0001 FR-11). Ask
+   whether to register several existing repos in one pass instead of
+   lazily. If yes, follow the installed `<prefix>-project-registration`
+   skill's "Bulk registration" section: shared answers once, one plan
+   file, `register_project.py --plan` (dry run, then `--apply`).
+6. **Optional — migrate an existing doc base** (FR-12). If the user
+   already keeps architecture docs, specs or ADRs somewhere else for a
+   project, offer to import them into that project's subtree:
+   `python ~/.claude/<prefix>/scripts/migrate_context.py --source <old> --dest <subtree>`
+   (dry run first; `--map OLD=NEW` and `--rename-key OLD=NEW` for what
+   the heuristics get wrong; `--apply` once the report shows zero
+   introduced broken links and zero docs missing required keys). The
+   source is never modified, and the report proves it. Mark imported
+   architecture docs `status: draft` unless the user has just verified
+   them.
+7. **Close-out** — say all of this:
+   - The prefix and the namespace path; what was created, updated or
+     kept; what `settings.json` gained (and that uninstall restores it
+     byte for byte).
+   - The projects root, and whether it carries the default's backup risk.
+   - That **no code repo was touched** — and that hooks do nothing in a
+     repo until it's registered.
+   - **Loudest:** unless step 5 ran, no project is registered and none
+     needs to be — the first `/<prefix>-spec`, `/<prefix>-plan`,
+     `/<prefix>-quick`, ... in an unregistered repo registers it on the
+     spot.
+   - How to upgrade (re-run this domain from an updated checkout) and how
+     to uninstall:
+     `python ~/.claude/<prefix>/scripts/uninstall.py` (then `--apply`).
 
-   A personal `~/.claude/skills/` entry or an unrelated command with a
-   colliding name is the user's, exactly as Domain 3 treats an existing
-   `mcpServers` entry. Report per file which of the two happened.
-
-   The same applies to the shared `docs/` files: a
-   `<user config>/docs/constitution.md` that already exists is almost
-   always this framework's own, amended by the user since a previous
-   run (ADR 0007's Governance procedure) — never overwrite it, and say
-   plainly that it was kept.
-5. `<user config>/settings.json`:
-   - **Doesn't exist**: write it from
-     `.claude/settings.multi-project.json.example`, resolving its one
-     placeholder `{{HOOKS_DIR}}` → `~/.claude/hooks` (literally, tilde
-     included — every hook in this framework runs in shell form, which
-     expands `~`; the existing `${CLAUDE_PROJECT_DIR:-.}` syntax is
-     itself bash parameter expansion, so bash-compatible execution was
-     already load-bearing before mode C, see ADR 0014). If step 2
-     resolved a relocated `CLAUDE_CONFIG_DIR`, use that directory's
-     absolute `hooks/` path instead. Don't use `settings.example.json`:
-     it bakes one project's build/test command and language values into
-     static text, which cannot work for a file shared by every project
-     on the machine.
-   - **Already exists**: merge additively, never replacing.
-     - Parse both. If either doesn't parse, stop and report — don't
-       guess, don't overwrite.
-     - For each hook event (`SessionStart`, `SessionEnd`,
-       `PreToolUse`, `PostToolUse`, `SubagentStop`), append this
-       framework's groups to the existing array. If a group with the
-       same `matcher` + `if` already exists, add only the individual
-       entries whose `command` (or, for an `agent` hook, whose
-       `statusMessage`) isn't already present in it. Never remove,
-       reorder, or rewrite an existing entry, and never replace an
-       existing hook that shares a trigger — add alongside it.
-     - For `permissions.allow`, append only strings not already there.
-     - Leave every other key in the user's file untouched.
-   - Either way, show the exact diff and confirm (`AskUserQuestion`)
-     before writing.
-6. Ask once for the **projects root** — the folder under which every
-   registered project's `<name>/` subtree (its `CLAUDE.md`,
-   `project-config.json`, `product/specs/`, `architecture/` and
-   `decisions/`) gets created. This is asked once per machine, here,
-   and never again: a lazy registration later reads the answer, it
-   never re-asks it (ADR 0014). Present the trade-off, don't just
-   prompt for a path:
-   - **`<user config>/docs/`, offered as the default** — the shared
-     root step 3 just created, with each project nesting one level
-     inside it exactly as in mode B (ADR 0015). Nothing else to decide,
-     everything in one place. **But it sits outside any repository
-     you'd think to version**, so a machine loss takes every spec, ADR
-     and architecture doc for every project with it. Say this when
-     offering it — it's the one real cost of the default, and the
-     mechanism no longer forces it.
-   - **Any folder you already version or sync** — a personal notes
-     repo, a synced drive folder, anything. Removes the backup risk
-     entirely, and costs nothing: routing entries store an absolute
-     subtree path either way, so nothing in the mechanism cares where
-     the subtrees actually sit. The shared `docs/` root stays at
-     `<user config>/docs/` regardless — only the per-project subtrees
-     move, and commands find shared material by the registry's
-     `.claude` location, not by the projects root.
-
-   Accept any absolute folder path. Create it if it doesn't exist
-   (confirm first). Don't validate it beyond "a writable directory on
-   this machine".
-7. Write `<user config>/projects.local.json` — the same file Domain 5
-   writes inside an AI-repo, here sitting **directly inside
-   `~/.claude`** as a sibling of `agents/`, `commands/`, `skills/`,
-   `hooks/` and `settings.json`. There's no extra nesting in this mode:
-   `~/.claude` plays exactly the role `<ai-repo>/.claude` plays in
-   Domain 5.
-   - **Doesn't exist**: create it containing exactly
-     `{"projects_root": "<the absolute path chosen in step 6>"}`.
-     Nothing else — no project entries; that's step 8's whole point.
-   - **Exists with the same `projects_root`**: no-op, report "already
-     configured".
-   - **Exists with a *different* `projects_root`**: stop and ask
-     (`AskUserQuestion`), showing both paths. Changing this after
-     projects already exist under the old root is genuinely disruptive:
-     their routing entries keep pointing at the old subtrees while
-     every new registration lands somewhere else. If the user does want
-     the change, say plainly that this command moves nothing — existing
-     subtrees stay where they are and keep working until moved by hand.
-     Never change it silently.
-   - **Exists but doesn't parse**: stop and report; never overwrite it.
-   - Preserve any existing project entries verbatim in every case.
-8. Close-out for this domain specifically — say all of this:
-   - Which files were copied, and which collisions were skipped, naming
-     what each skip costs.
-   - That the shared `docs/` root now lives at `<user config>/docs/`
-     (`constitution.md`, `workflow/`, `glossary.md`, the two `product/`
-     templates, plus the `architecture/`/`decisions/` template sources
-     and `CLAUDE.md.template` that lazy registration needs) — one copy
-     for every project on this machine, and the place a command looks
-     for shared material by absolute path, since mode C has no `docs`
-     link anywhere. Note that this framework's *own* ADRs
-     (`0001-*.md` onward) were deliberately not copied: they document
-     the framework, not any registered project.
-   - What happened to `settings.json`: created from the multi-project
-     variant (with the resolved `{{HOOKS_DIR}}` value), or merged
-     additively, listing exactly which entries were added.
-   - The chosen projects root, and whether it carries the default's
-     backup risk.
-   - That **no code repo was touched at all** — no link, no file, no
-     `.gitignore` line anywhere.
-   - **Loudest: no project has been registered, and none needs to be
-     registered here.** Registration is lazy by design (ADR 0014): the
-     first time you run `/spec`, `/plan`, `/tasks`, `/implement`,
-     `/review`, `/adr` or `/reconcile` inside an unregistered repo,
-     that command pauses — via the `project-registration` skill it
-     invokes as its own first step — asks for the project name,
-     build/test command and language settings, creates
-     `<projects root>/<name>/` with its `product/specs/`,
-     `architecture/`, `decisions/`, `CLAUDE.md` and
-     `project-config.json`, writes the routing entry, and *then*
-     continues with what you actually asked for. Re-running
-     `/setup-framework` per project is **not** how mode C works.
+**Upgrading from the hand-built install of 2026-09-30.** That copy has
+no manifest this installer recognizes, so the dry run reports its files
+as collisions. Run that install's own uninstaller first (dry run, then
+apply) — it keeps the registry and project subtrees — and then install.
+A kept registry and kept project subtrees in the namespace are adopted,
+not treated as collisions.
 
 <!--
 ## Domain N — <name>
@@ -1012,12 +972,10 @@ all — the state of the two architecture files:
   `.claude/projects.local.json` is committed anywhere, so both must be
   recreated on any fresh machine or fresh clone/checkout of the target
   repo.
-- If Domain 6 ran: the user-level directory installed into, what was
-  copied vs. skipped on a collision (including the shared `docs/` root
-  — `constitution.md`, `workflow/`, `glossary.md`, the two `product/`
-  templates), how `settings.json` was created/merged, the chosen
-  projects root and whether it carries the
-  default's backup risk — and, loudest, that **no project was
-  registered and none needs to be**: the first pipeline command run in
-  an unregistered repo registers it on the spot via the
-  `project-registration` skill.
+- If Domain 6 ran: the prefix and namespace installed into, what the
+  installer created/updated/kept (and any collision it refused on), what
+  `settings.json` gained, the chosen projects root and whether it carries
+  the default's backup risk, whether bulk registration or a migration
+  ran — and, loudest, that unless they did, **no project was
+  registered and none needs to be**: the first `/<prefix>-*` pipeline
+  command run in an unregistered repo registers it on the spot.

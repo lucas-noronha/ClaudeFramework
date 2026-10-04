@@ -27,14 +27,20 @@ structural-sized work at this model tier.
   regulated data), apply it even for a trivial change.
 - If a constitution exists, its Core Principles apply here too, even
   for a one-line change (e.g. never hardcode a secret while "just"
-  fixing a typo nearby). Since ADR 0015 there can be two, and both
-  apply: the supreme `docs/constitution.md` at the shared `docs/` root
-  (the floor), plus the project's own
+  fixing a typo nearby). There can be up to three layers, and all
+  apply: the supreme pair at the shared `docs/` root —
+  `docs/constitution-baseline.md` (framework Principles I–V, ADR 0018)
+  and `docs/constitution.md` (the floor's organization layer) — plus the
+  project's own
   `<project-subtree>/constitution.md` when your caller handed you
   absolute paths into a registered project's subtree and that file
   exists — it only ever *adds* principles, it never relaxes a supreme
-  one. In mode A (no registration, the repo's own `docs/`) there is just
-  the one `docs/constitution.md` and this is unchanged. Read whichever
-  of the two your caller's paths actually point at; don't go hunting for
-  a second file you weren't pointed at, and don't resolve project
+  one. In mode A (no registration, the repo's own `docs/`) there is no
+  project layer, just the supreme pair (or a single
+  `docs/constitution.md` in a project older than ADR 0018). Read
+  whichever files your caller's paths actually point at; don't go
+  hunting for one you weren't pointed at, and don't resolve project
   registration yourself.
+- In the fast lane (`/quick`) you get a free-text request instead of a
+  spec task. Same rules: one file, no new business rule. If it turns out
+  bigger, stop and say so, so the request can be re-triaged.

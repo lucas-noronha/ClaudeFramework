@@ -16,12 +16,14 @@ exists, its Core Principles apply regardless of what the task asks for
 the task as written would need to violate one, stop and flag it instead
 of silently implementing the violation.
 
-**There can be two constitutions, and both bind you when both exist**
-(see `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
+**The constitution has up to three layers, and all of them bind you**
+(see `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`
+and `docs/decisions/0018-constitution-baseline-layer.md`):
 
-- The **supreme** `docs/constitution.md`, at the shared `docs/` root —
-  a non-negotiable floor for every project. Always read it when it
-  exists.
+- The **supreme** layer, at the shared `docs/` root — a non-negotiable
+  floor for every project. It is two files: `docs/constitution-baseline.md`
+  (the framework's Principles I–V) and `docs/constitution.md` (the
+  organization's own, from VI on). Read both whenever they exist.
 - The **project's own** `<project-subtree>/constitution.md` — read it
   too, but only if it exists; it is optional and purely *additive*. It
   may add principles; it may never override, narrow or relax a supreme
@@ -31,10 +33,26 @@ of silently implementing the violation.
   in a registered multi-project setup (modes B/C) `/implement` hands you
   absolute paths into the project subtree, and the shared `docs/` root
   is the one holding that subtree. In **mode A** — no registration, the
-  repo's own `docs/` — there is exactly one constitution,
-  `docs/constitution.md`, and everything above collapses to today's
-  single-file check. If you were given no resolved paths and can't tell
-  which case you're in, say so rather than guessing at a second file.
+  repo's own `docs/` — there is no project layer: just
+  `docs/constitution-baseline.md` plus `docs/constitution.md` (an
+  older project may have only the latter, holding all its principles).
+  If you were given no resolved paths and can't tell which case you're
+  in, say so rather than guessing at another file.
+
+**Architecture docs: how far to trust them** (see
+`docs/workflow/living-architecture-docs.md`):
+
+- A doc with `status: active` is ground truth: follow its rules.
+- A doc with `status: draft` (derived automatically, with a banner) is
+  advisory: follow it where it agrees with the code, and where the task
+  would conflict with one of its rules, report the conflict in your
+  final report instead of either obeying or ignoring it silently.
+- Describing is not prescribing. Something the doc marks as
+  `Pitfall`, `Finding` or a documented deviation is never a pattern to
+  copy, however often it appears in the code.
+- If your change makes a statement in an architecture doc untrue, say
+  which doc and statement in your final report. Your caller updates it.
+  Never add an inventory count ("the 12 handlers") to any doc.
 
 When implementing:
 - If the task names specific `Test` entries (from `/plan`'s Test plan,
@@ -74,8 +92,14 @@ When implementing:
   touched auth, secrets/credentials, or input handling, also run the
   `security-review` skill as a final pass before marking it done — this
   applies regardless of whether a constitution exists; when one does,
-  treat a finding that maps to a Core Principle of *either* layer as
+  treat a finding that maps to a Core Principle of *any* layer as
   something to fix now, not hand to `reviewer` to catch later.
+- **Verify a security claim against git before stating it as fact.**
+  "A secret is committed" or "a credential leaked" is only reported as
+  such after `git ls-files -- <path>`, `git check-ignore -v <path>` and
+  `git log --all --oneline -- <path>` confirm the file is tracked or was
+  in history. A secret sitting in a gitignored, never-committed file is
+  a different, smaller finding — report it as exactly that.
 - If `reviewer` returns a task with findings, apply
   `superpowers:receiving-code-review` discipline when enabled (verify
   each finding is actually correct before implementing it — don't

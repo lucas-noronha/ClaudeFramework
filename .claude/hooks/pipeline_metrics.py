@@ -11,14 +11,19 @@ Wired to several different triggers in settings.json, all landing here:
   (counts "## Reconciliation" lines by outcome; a snapshot of the
   CURRENT total, not a delta, so it's correct regardless of how the
   Edit was actually applied under the hood)
+- PostToolUse on any subagent dispatch -> "subagent_dispatched"
+  (ADR 0020: the per-feature subagent count `/metrics` compares)
 - PostToolUse on a subagent dispatch whose subagent_type is "reviewer"
-  -> "reviewer_verdict" (Approved/Returned, best-effort spec id parsed
+  (or `<prefix>-reviewer` under a user-level install) ->
+  "reviewer_verdict" (Approved/Returned, best-effort spec id parsed
   from the prompt handed to it)
 
-A fourth event this framework's metrics use, "spec_implemented", is
-logged by spec_status_sync.py itself, not here — that hook already
-computes the exact status transition; duplicating the detection here
-would risk drifting out of sync with it if that logic ever changes.
+Other events land in the same log from elsewhere: "spec_implemented"
+from spec_status_sync.py (it already computes the exact status
+transition, so duplicating the detection here could drift), "gate_run"
+from run_build_test.py, and "feature_started"/"feature_finished" from
+`.claude/scripts/metrics.py`, which `/implement` and `/quick` call to
+mark which feature the events in between belong to.
 
 Best-effort throughout: never raises, never blocks, no-ops on any
 shape it doesn't recognize. The reviewer_verdict trigger depends on
@@ -34,7 +39,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _pipeline_metrics import log_event  # noqa: E402
-from _project_paths import normalize, resolve_docs_root  # noqa: E402
+from _project_paths import framework_config, hook_should_run, normalize, read_hook_input, resolve_docs_root  # noqa: E402
 
 RECONCILIATION_SECTION = re.compile(r"^##\s*Reconciliation\s*$(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL)
 
@@ -80,10 +85,25 @@ def handle_spec_write(project: str, abspath: str, is_new_write: bool) -> None:
         )
 
 
+def _role(subagent_type: str) -> str:
+    """`cfw-reviewer` → `reviewer` under a prefixed user-level install
+    (ADR 0017); unchanged otherwise.
+    """
+    prefix = framework_config().get("prefix")
+    if prefix and subagent_type.startswith(prefix + "-"):
+        return subagent_type[len(prefix) + 1:]
+    return subagent_type
+
+
 def handle_subagent_dispatch(project: str, data: dict) -> None:
     tool_input = data.get("tool_input", {})
-    subagent_type = tool_input.get("subagent_type") or tool_input.get("subagent")
-    if subagent_type != "reviewer":
+    subagent_type = str(tool_input.get("subagent_type") or tool_input.get("subagent") or "general-purpose")
+
+    # Every dispatch is counted (ADR 0020): `/metrics` compares the
+    # subagent count per feature between the fast lane and the full path.
+    log_event(project, "subagent_dispatched", subagent_type=subagent_type, role=_role(subagent_type))
+
+    if _role(subagent_type) != "reviewer":
         return
 
     raw_response = data.get("tool_response", "")
@@ -108,7 +128,12 @@ def handle_subagent_dispatch(project: str, data: dict) -> None:
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
     tool_name = data.get("tool_name", "")
 

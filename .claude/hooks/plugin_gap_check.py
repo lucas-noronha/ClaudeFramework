@@ -16,7 +16,7 @@ import sys
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import state_file_path  # noqa: E402
+from _project_paths import hook_should_run, state_file_path  # noqa: E402
 
 MIN_FILES = 3  # ignore a handful of incidental files of a language
 DISMISS_FILENAME = ".plugin-gap-dismissed.json"  # per-machine, gitignored
@@ -72,6 +72,11 @@ def enabled_plugins() -> set:
 
 
 def main() -> None:
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
 
     try:

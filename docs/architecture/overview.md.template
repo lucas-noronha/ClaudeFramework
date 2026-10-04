@@ -1,6 +1,8 @@
 ---
 doc_type: architecture
 scope: overview
+resumo: What is the system's top-level shape, and which doc covers each part?
+naoResponde: Any specific rule — open the narrower doc it points to.
 status: active
 last_updated: {{DATE}}
 context_budget: ~400 tokens

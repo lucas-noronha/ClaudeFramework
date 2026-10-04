@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Write(docs/product/specs/*)"
+      "Edit(docs/product/specs/*)"
     ]
   },
   "hooks": {
@@ -32,20 +32,20 @@
     "PreToolUse": [
       {
         "matcher": "Edit",
-        "if": "Edit(docs/decisions/*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Edit(docs/decisions/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/adr_immutability_guard.py\""
           }
         ]
       },
       {
         "matcher": "Write",
-        "if": "Write(docs/product/specs/*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Write(docs/product/specs/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_number_guard.py\""
           }
         ]
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{BUILD_TEST_CMD}}",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/run_build_test.py\"",
             "timeout": 180,
             "statusMessage": "Running build + tests (deterministic gate)..."
           }
@@ -100,58 +100,60 @@
       },
       {
         "matcher": "Write",
-        "if": "Write(.claude/skills/**)",
         "hooks": [
           {
             "type": "command",
+            "if": "Write(.claude/skills/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/skill_index.py\""
           }
         ]
       },
       {
         "matcher": "Edit",
-        "if": "Edit(.claude/skills/**)",
         "hooks": [
           {
             "type": "command",
+            "if": "Edit(.claude/skills/**)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/skill_index.py\""
           }
         ]
       },
       {
         "matcher": "Write",
-        "if": "Write(docs/decisions/*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Write(docs/decisions/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/adr_backlink.py\""
           },
           {
             "type": "command",
+            "if": "Write(docs/decisions/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/decision_index.py\""
           }
         ]
       },
       {
         "matcher": "Edit",
-        "if": "Edit(docs/decisions/*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Edit(docs/decisions/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/decision_index.py\""
           }
         ]
       },
       {
         "matcher": "Write",
-        "if": "Write(docs/product/specs/*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Write(docs/product/specs/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_index.py\""
           },
           {
             "type": "command",
+            "if": "Write(docs/product/specs/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
           }
         ]
@@ -176,65 +178,61 @@
       },
       {
         "matcher": "Edit",
-        "if": "Edit(docs/constitution.md)",
         "hooks": [
           {
             "type": "command",
+            "if": "Edit(docs/constitution.md)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/constitution_amendment_check.py\""
           }
         ]
       },
       {
         "matcher": "Write",
-        "if": "Write(docs/constitution.md)",
         "hooks": [
           {
             "type": "command",
+            "if": "Write(docs/constitution.md)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/constitution_amendment_check.py\""
           }
         ]
       },
       {
         "matcher": "Edit",
-        "if": "Edit(docs/product/specs/*)",
         "hooks": [
           {
             "type": "command",
+            "if": "Edit(docs/product/specs/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_index.py\""
           },
           {
             "type": "command",
+            "if": "Edit(docs/product/specs/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/spec_status_sync.py\""
           },
           {
             "type": "command",
+            "if": "Edit(docs/product/specs/*)",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
           }
         ]
       },
       {
         "matcher": "Edit",
-        "if": "Edit(docs/product/specs/*)",
         "hooks": [
           {
-            "type": "agent",
-            "model": "sonnet",
-            "timeout": 120,
-            "statusMessage": "Checking if the spec's stakeholder-language validation summary needs syncing...",
-            "prompt": "Hook input (PostToolUse JSON): $ARGUMENTS\n\nYou keep a product spec's {{STAKEHOLDER_LANG}} stakeholder-validation summary in sync with its canonical {{CANONICAL_LANG}} file, per docs/decisions/0001-tooling-agents-commands-skills.md's convention (each spec has a paired .validation-{{STAKEHOLDER_LANG_CODE}}.md). Skip this whole hook if this project doesn't use a canonical/stakeholder language split.\n\n1. Extract the edited file's path from the JSON (tool_input.file_path for Edit, tool_response.filePath as a fallback).\n2. If the path does not start with \"docs/product/specs/\" or does not end in \".md\", stop now, no output.\n3. If the path contains \".validation-\", stop now, no output — this hook only reacts to the canonical spec file, never its own companion, to avoid a rewrite loop.\n4. Read the file. Find the YAML frontmatter `status:` field (near the top, e.g. `status: draft`).\n5. If status is `draft` or `abandoned`, or the field is missing, stop now, no output — either not approved yet, or a dropped feature that no longer needs a synced summary.\n6. Otherwise (status is `approved` or `implemented` — the stakeholder has approved it) the companion path is the same path with `.md` replaced by `.validation-{{STAKEHOLDER_LANG_CODE}}.md`.\n   - Read docs/product/validation-summary-template.md for the expected structure and tone (plain-language {{STAKEHOLDER_LANG}}, non-technical reader, short).\n   - Read the companion file if it already exists.\n   - Compare the companion's summary sections against the canonical spec's CURRENT business context and functional/non-functional requirements. If the companion is missing, or its content no longer matches the canonical requirements, write/rewrite it in the template's style, referencing the canonical file by name as the template does. If it already matches, make no change.\n   - If the companion already has a validation checklist with existing checkbox states, preserve those checkboxes as-is — don't reset them. Only add the template's default questions if creating the file fresh.\n7. End with a one-line systemMessage: either what you updated (e.g. \"Validation summary refreshed for NNNN — FRs had changed since last sync\") or \"Validation summary for <spec> already in sync, no changes made\"."
+            "type": "command",
+            "if": "Edit(docs/product/specs/*)",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/validation_sync_check.py\""
           }
         ]
       },
       {
         "matcher": "Write",
-        "if": "Write(docs/product/specs/*)",
         "hooks": [
           {
-            "type": "agent",
-            "model": "sonnet",
-            "timeout": 120,
-            "statusMessage": "Checking if the spec's stakeholder-language validation summary needs syncing...",
-            "prompt": "Hook input (PostToolUse JSON): $ARGUMENTS\n\nYou keep a product spec's {{STAKEHOLDER_LANG}} stakeholder-validation summary in sync with its canonical {{CANONICAL_LANG}} file, per docs/decisions/0001-tooling-agents-commands-skills.md's convention (each spec has a paired .validation-{{STAKEHOLDER_LANG_CODE}}.md). Skip this whole hook if this project doesn't use a canonical/stakeholder language split.\n\n1. Extract the written file's path from the JSON (tool_input.file_path for Write, tool_response.filePath as a fallback).\n2. If the path does not start with \"docs/product/specs/\" or does not end in \".md\", stop now, no output.\n3. If the path contains \".validation-\", stop now, no output — this hook only reacts to the canonical spec file, never its own companion, to avoid a rewrite loop.\n4. Read the file. Find the YAML frontmatter `status:` field (near the top, e.g. `status: draft`).\n5. If status is `draft` or `abandoned`, or the field is missing, stop now, no output — either not approved yet, or a dropped feature that no longer needs a synced summary.\n6. Otherwise (status is `approved` or `implemented` — the stakeholder has approved it) the companion path is the same path with `.md` replaced by `.validation-{{STAKEHOLDER_LANG_CODE}}.md`.\n   - Read docs/product/validation-summary-template.md for the expected structure and tone (plain-language {{STAKEHOLDER_LANG}}, non-technical reader, short).\n   - Read the companion file if it already exists.\n   - Compare the companion's summary sections against the canonical spec's CURRENT business context and functional/non-functional requirements. If the companion is missing, or its content no longer matches the canonical requirements, write/rewrite it in the template's style, referencing the canonical file by name as the template does. If it already matches, make no change.\n   - If the companion already has a validation checklist with existing checkbox states, preserve those checkboxes as-is — don't reset them. Only add the template's default questions if creating the file fresh.\n7. End with a one-line systemMessage: either what you updated (e.g. \"Validation summary refreshed for NNNN — FRs had changed since last sync\") or \"Validation summary for <spec> already in sync, no changes made\"."
+            "type": "command",
+            "if": "Write(docs/product/specs/*)",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/validation_sync_check.py\""
           }
         ]
       }

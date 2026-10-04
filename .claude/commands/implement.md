@@ -9,6 +9,18 @@ actually live (registering the project first if it isn't yet), and in
 the common case costs one check and changes nothing. Once, here, before
 either mode below branches — both need a resolved project either way.
 
+Two settings from this project's config change what follows (they live
+in `project-config.json`, or the optional `.claude/project-config.json`
+in mode A; absent means the default):
+
+- **`review_policy`** (ADR 0020): `per-task` (default) runs `reviewer`
+  on every coder-tier task as step 6 describes; `final-only` skips every
+  per-task review, so the whole-feature `/review` is the only review
+  pass; `structural-only` keeps the per-task review only when the spec's
+  tier is structural. The final `/review` runs under every policy, and
+  so does the build/test gate.
+- **`census.enabled`** (ADR 0019): turns on step 8.
+
 Two modes, based on $ARGUMENTS.
 
 ## Single-task mode — $ARGUMENTS names one task
@@ -24,7 +36,9 @@ Two modes, based on $ARGUMENTS.
 5. After the subagent finishes, the project's build/lint/test hook
    runs automatically. If it fails, return the result to the subagent
    before considering the task done.
-6. Once green: for a **coder**-tier task, delegate a review to
+6. Once green, if `review_policy` calls for a per-task review here (see
+   above — otherwise skip to step 7, and reconciliation entries for this
+   task are left to the final `/review`): for a **coder**-tier task, delegate a review to
    `reviewer`, handing it the exact file list `coder` reported at the
    end of step 3 as the review's scope — never "the current diff" left
    for `reviewer` to compute itself. This isn't optional phrasing: this
@@ -46,6 +60,17 @@ Two modes, based on $ARGUMENTS.
    "## Tasks" section. A hook flips the spec's own `status` to
    `implemented` once every task box in the section is checked — never
    set that status by hand.
+8. **Census projects only** (`census.enabled`): update every
+   architecture doc this task made untrue (the subagent's report names
+   them; keep to describing, no inventory counts), then record the
+   change for the next `/update-docs`:
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/census.py" ledger add-pending --spec <spec id> --task <task number> --files <the task's src/tests files> --docs <docs updated>`.
+   Never touch the watermark: that is `/update-docs`' job, once the
+   change has actually landed on the integration branch.
+
+When single-task mode is called on its own (not from orchestration
+mode), wrap it in the feature markers described in orchestration mode's
+step 0, using the task's spec id.
 
 ## Orchestration mode — $ARGUMENTS names a spec, not one task
 
@@ -55,6 +80,12 @@ implementing a dropped feature.
 Runs every remaining (unchecked) task in that spec's "## Tasks" section
 to completion, respecting the dependency graph `/tasks` recorded (see
 `docs/decisions/0004-plan-tasks-implement-rebalance.md`):
+
+0. **Feature markers** (ADR 0020): before the first wave run
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" start --feature <spec id> --lane <fast if the spec has lite: true, else full> --tier <the spec's tier>`,
+   and after the last one (or when the sweep stops) `metrics.py finish
+   --feature <spec id>`. They let `/metrics` attribute subagents, gate
+   runs and reviewer verdicts to this feature.
 
 1. **Worktree check** (see
    `docs/decisions/0005-spec-worktree-lifecycle.md`): run `git worktree
@@ -89,7 +120,7 @@ to completion, respecting the dependency graph `/tasks` recorded (see
    are already checked off.
 4. Dispatch the whole wave in one turn — one subagent call per task, in
    parallel, not sequential — each following single-task mode above
-   (steps 1–7) in full, including its own build/test gate and, for
+   (steps 1–8) in full, including its own build/test gate and, for
    coder-tier tasks, its own `reviewer` pass. Every task gets its own
    isolated subagent context: only that task's text and the spec path,
    never the other tasks in the wave or the orchestration history —

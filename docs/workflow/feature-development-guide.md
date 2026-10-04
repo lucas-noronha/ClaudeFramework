@@ -3,8 +3,8 @@ doc_type: workflow
 scope: feature-development-guide
 status: active
 last_updated: {{DATE}}
-related: [ai-first-development.md, parallel-work.md, model-tiering.md, governance-and-observability.md, ../architecture/module-structure.md, ../architecture/frontend.md, ../decisions/0004-plan-tasks-implement-rebalance.md]
-context_budget: ~1350 tokens
+related: [ai-first-development.md, parallel-work.md, model-tiering.md, governance-and-observability.md, living-architecture-docs.md, ../decisions/0020-proportional-pipeline-cost.md, ../architecture/module-structure.md, ../architecture/frontend.md, ../decisions/0004-plan-tasks-implement-rebalance.md]
+context_budget: ~1600 tokens
 ---
 
 # Practical guide — what do I type in chat
@@ -27,7 +27,7 @@ on its own — avoid it.
 | # | You type | What happens | When to move on |
 |---|---|---|---|
 | 1 | `/spec <short description of the idea>` | Generates a draft at `docs/product/specs/NNNN-*.md` (+ a stakeholder-language companion, if your project uses that split) | Whenever the spec doesn't exist yet |
-| 2 | *(outside the chat)* Send the spec (or its companion) to your stakeholder | — | Once they approve, update `status: approved` in the canonical file (or `status: abandoned` if the feature gets dropped instead) |
+| 2 | *(outside the chat)* Send the spec (or its companion) to your stakeholder | — | Nothing to edit: the next `/plan` asks whether to approve the spec and sets `status: approved` itself (or `abandoned` if the feature gets dropped) |
 | 3 | `/plan docs/product/specs/NNNN-*.md` | Triage classifies; trivial stops there, standard gets a short technical plan, structural gets `architect` (+ ADR if needed) plus the same plan | If an ADR was proposed, you approve it manually (`status: accepted`) before moving on |
 | 4 | `/tasks docs/product/specs/NNNN-*.md` | Mechanically breaks the plan into small, dependency-annotated tasks | Always |
 | 5 | `/implement docs/product/specs/NNNN-*.md` | First offers to isolate this spec in its own worktree (see below); then orchestrates every remaining task: dependency-ordered waves, one subagent per task, parallel within a wave, automatic `reviewer` pass per coder-tier task | Or `/implement <task number>` for just one task — see below |
@@ -64,19 +64,38 @@ just that one task — same routing (`quickfix`/`coder`), same
 auto-review for coder-tier work, same checkbox update, just scoped to
 one task instead of the whole remaining list.
 
-## For a trivial task (skips the full flow)
+## For a small change: the fast lane
 
-If it's an obvious, pointed fix (typo, config tweak, 1 file, no new
-business rule), you don't need `/spec` or `/plan`. Go straight to:
+If the change doesn't deserve a spec, describe it instead:
 
 ```
-/implement fix the typo in such file, line such
+/quick fix the typo in the checkout confirmation email
 ```
 
-`/implement` classifies it via `triage`, routes it to `quickfix`
-(cheaper model than `coder`, same expectation of tests alongside the
-fix) instead of `coder`, and doesn't trigger `architect` or ask for
-`/review`.
+`/quick` classifies the request with `triage`, no spec required
+(`../decisions/0020-proportional-pipeline-cost.md`):
+
+- **trivial** → `quickfix` fixes it directly; the build/test gate runs;
+  no spec file, no review. You get the tier and the gate result back.
+- **standard** → it offers a *lite spec*: one file with FRs, ACs and the
+  task list, which you approve on the spot, then `/implement` runs it.
+  `/plan` is skipped unless you ask for it.
+- **structural** → it stops and points you at the full `/spec` →
+  `/plan` path, because that's where the ADR gets written.
+
+Only the ceremony shrinks: the constitution, the gate and the scope
+rules are the same as in the full path. `/implement <one task>` still
+works for a single task, and `/metrics` shows what each lane actually
+cost on this project.
+
+## Keeping architecture docs true
+
+If the project enabled the census (its config's `census` block), run
+`/update-docs` from time to time. It checks the docs against the
+integration branch, routes drift, documents every commit since the last
+sync, and moves its watermark only when nothing is left out. A drafted
+doc becomes trustworthy through `/update-docs promote <doc>`. See
+`living-architecture-docs.md`.
 
 ## Recording a decision with no task attached
 
@@ -95,12 +114,14 @@ flight.
 
 ## Turning on the deterministic gate (hook)
 
-`.claude/settings.example.json` includes a sample hook that runs your
-project's build + tests automatically after every edit. Once you have
-a real build to point it at:
+`.claude/settings.example.json` includes a hook that runs your
+project's build + tests automatically whenever a code-writing subagent
+finishes (read-only subagents skip it, ADR 0020). `/setup-framework`
+does these steps for you; by hand:
 
 1. Rename it to `.claude/settings.json`.
-2. Replace `{{BUILD_TEST_CMD}}` with your actual build/test command.
+2. Put your actual build/test command in `.claude/project-config.json`
+   as `build_test_cmd` (the hook reads it there).
    It's a single slot — for a two-stack monorepo (e.g. a .NET backend +
    a React frontend, this framework's own `auto_format.py.example`
    default), chain both stacks explicitly rather than leaving one

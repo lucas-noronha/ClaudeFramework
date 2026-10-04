@@ -19,6 +19,11 @@ of their own. Mode A has only the supreme file, at
 `<repo>/docs/constitution.md`, and behaves here exactly as it did before
 ADR 0015.
 
+ADR 0018 adds a framework-owned baseline layer above both,
+`<root>/docs/constitution-baseline.md` (Principles I-V). It is replaced
+on every framework upgrade, so any edit to it gets a "you're editing the
+framework's layer" nudge instead of the version check.
+
 Whether a project principle actually *weakens* a supreme one stays a
 semantic judgment `/spec`, `/plan`, `coder`/`quickfix` and `reviewer`
 make while reading both files (ADR 0015 deliberately did not strengthen
@@ -32,9 +37,12 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import normalize  # noqa: E402
+from _project_paths import hook_should_run, normalize, read_hook_input  # noqa: E402
 
 CONSTITUTION_FILENAME = "constitution.md"
+# ADR 0018: the framework's own Principles I-V, a third layer above the
+# two ADR 0015 introduced. Framework-owned: replaced on every upgrade.
+BASELINE_FILENAME = "constitution-baseline.md"
 DOCS_DIRNAME = "docs"
 
 # Shared material sits at the `docs/` root beside the project folders
@@ -71,10 +79,15 @@ def constitution_target(abspath: str):
     enough, and identical in every mode.
     """
     parts = normalize(abspath).split("/")
-    if len(parts) < 3 or parts[-1] != CONSTITUTION_FILENAME:
+    if len(parts) < 3 or parts[-1] not in (CONSTITUTION_FILENAME, BASELINE_FILENAME):
         return None
 
-    if parts[-2] == DOCS_DIRNAME:
+    if parts[-1] == BASELINE_FILENAME:
+        # Only ever at a docs root — a project subtree has no baseline.
+        if parts[-2] != DOCS_DIRNAME:
+            return None
+        depth = 2
+    elif parts[-2] == DOCS_DIRNAME:
         depth = 2  # supreme: .../docs/constitution.md
     elif len(parts) >= 4 and parts[-3] == DOCS_DIRNAME and parts[-2] not in RESERVED_DOCS_NAMES:
         depth = 3  # project: .../docs/<project-name>/constitution.md
@@ -126,7 +139,12 @@ def _committed_copy(abspath: str):
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     path = data.get("tool_input", {}).get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
     if not path:
         return
@@ -149,6 +167,20 @@ def main() -> None:
         with open(abspath, encoding="utf-8") as f:
             current_content = f.read()
     except FileNotFoundError:
+        return
+
+    if os.path.basename(abspath) == BASELINE_FILENAME:
+        # ADR 0018: a hand edit here is lost on the next framework upgrade.
+        # Still nudge-only — the framework repo itself edits this file
+        # legitimately, and a hook can't tell the two apart.
+        print(json.dumps({
+            "systemMessage": (
+                f"{relative} is the framework-owned baseline layer — a framework "
+                "upgrade replaces it. In an adopted project, amend constitution.md "
+                "beside it instead; edit this file only in the framework repository, "
+                "bumping its version."
+            ),
+        }))
         return
 
     current_version = read_version(current_content)

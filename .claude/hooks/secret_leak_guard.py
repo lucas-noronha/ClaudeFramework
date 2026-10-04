@@ -22,6 +22,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _project_paths import hook_should_run, read_hook_input  # noqa: E402
+
 SECRET_PATTERNS = [
     ("AWS access key ID", re.compile(r"AKIA[0-9A-Z]{16}")),
     ("AWS secret access key assignment", re.compile(r"(?i)aws_secret_access_key\s*[:=]\s*['\"][A-Za-z0-9/+=]{40}['\"]")),
@@ -33,7 +36,12 @@ SECRET_PATTERNS = [
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     tool_input = data.get("tool_input", {})
     text = tool_input.get("content")
     if text is None:

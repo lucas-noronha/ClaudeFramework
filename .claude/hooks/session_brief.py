@@ -11,12 +11,17 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import resolve_docs_root, state_file_path  # noqa: E402
+from _project_paths import hook_should_run, resolve_docs_root, state_file_path  # noqa: E402
 
 HANDOFF_CHAR_LIMIT = 800  # bound the cost of a stale/verbose last_assistant_message
 
 
 def main() -> None:
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
 
     # git status is about the *code* repo, so it stays on CLAUDE_PROJECT_DIR;

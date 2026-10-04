@@ -29,18 +29,22 @@ CLAUDE.md.template              → copy to your repo root; /setup-framework fil
 .claude/
   README.md        → component reference: what each agent/command/skill/hook does and why
   agents/          → 6 fixed subagent roles (see "The pipeline" below)
-  commands/        → 9 slash commands, the pipeline's deterministic entry points
+  commands/        → 12 slash commands, the pipeline's deterministic entry points (including the /quick fast lane, /update-docs and /metrics)
   skills/          → 3 meta-skills (adr-writing, skill-authoring, plugin-awareness) — the framework ships no architecture/domain skill, you add your own and tag each with applies_to: [agent-name, ...]
   hooks/           → deterministic, zero-token-cost checks and guards: 3 keep docs/decisions/README.md, docs/product/specs/README.md, and .claude/skills/README.md indexed automatically; 3 more nudge (never block) on doc context-budget drift, missing frontmatter, and a docs/constitution.md change without a version bump; 1 flips a spec's status to implemented once its tasks are all checked off; 1 blocks a write that matches a high-confidence secret pattern, repo-wide, active by default; 1 more runs your ecosystem's dependency audit when a manifest changes; 2 append a raw pipeline-observability event log (one is a shared helper, not wired directly); 1 pair (session start/end) carries a handoff note between sessions; 1 more flags at session start when the repo's language has an official LSP plugin not yet enabled
   settings.example.json → wires the hooks for mode A; /setup-framework renames it to settings.json with the build/test command filled in
+  scripts/         → on-demand tools: the mode C installer/uninstaller, project registration (single or bulk), doc-base migration, the census engine, per-feature metrics
   settings.multi-project.json.example → the same wiring for modes B/C, where one settings.json is shared by several projects: hook paths behind a {{HOOKS_DIR}} placeholder /setup-framework resolves per mode, the build/test gate and the language-dependent agent hooks looking their values up per project at runtime instead of being baked in
 docs/
-  constitution.md  → supreme, versioned, non-negotiable principles (secrets, security baseline, one placeholder slot for a project-specific one) — checked by /spec, /plan, coder/quickfix, reviewer; amended under its own Governance section, never edited silently (ADR 0007)
+  constitution-baseline.md → the framework's own Principles I–V, replaced on every upgrade (ADR 0018)
+  constitution.md  → the organization/project layer on top of the baseline: supreme, versioned, non-negotiable principles (secrets, security baseline, one placeholder slot for a project-specific one) — checked by /spec, /plan, coder/quickfix, reviewer; amended under its own Governance section, never edited silently (ADR 0007)
   glossary.md.template
   architecture/    → overview template + 2 blank slots (module-structure, frontend) — no default architecture pattern shipped; fill in your project's actual shape or delete what doesn't apply
   decisions/       → ADR template + worked-example ADRs (0001 tooling split, 0002 plugin integration, 0007 constitution.md, 0008 spec area/lineage, 0009 per-task reconciliation, among others)
   product/         → spec intake template (a spec auto-tags its own area/lineage and carries a "## Reconciliation" section — ADR 0008/0009) + stakeholder-facing validation-summary template
-  workflow/        → the conceptual flow, the practical "what do I type" guide, parallel-work guidance, the model-tiering convention, the Core-vs-Optional plugin catalog, and how the constitution/lineage/reconciliation/metrics layer fits together
+  workflow/        → living-architecture-docs.md (how architecture docs stay true to code), the conceptual flow, the practical "what do I type" guide, parallel-work guidance, the model-tiering convention, the Core-vs-Optional plugin catalog, and how the constitution/lineage/reconciliation/metrics layer fits together
+tests/             → the framework's own tests (not shipped into projects): every acceptance criterion of specs 0001–0003, run with `python -m unittest` from `tests/`
+CHANGELOG.md       → what changed, per spec
 ```
 
 ## Placeholder convention
@@ -191,36 +195,44 @@ re-run Domain 5 after any fresh clone or on a new machine — see Domain
 
 Claude Code already loads `~/.claude` for every session on a machine,
 so if the machinery lives there, a code repo needs no copied file *and*
-no link to reach it. Pick mode C and **Domain 6** merges `agents/`,
-`commands/`, `skills/` and `hooks/` into `~/.claude/` — never
-overwriting a file you already have there; a collision stops and asks
-— writes or additively merges `~/.claude/settings.json`, and asks once
-for a **projects root**, the folder each registered project's
-`<name>/docs/`, `<name>/CLAUDE.md` and `<name>/project-config.json`
-get created under. `~/.claude/projects/` is the default, but any folder
-works, including one you already version or sync; the command says
-plainly that the default sits outside version control, so a machine
-loss takes those specs and ADRs with it.
+no link to reach it. Pick mode C and **Domain 6** runs the installer
+from this repository (`docs/decisions/0017-user-level-install-mechanics.md`):
 
-Domain 6 registers **no project** — that's lazy on purpose
-(`docs/decisions/0014-setup-framework-adoption-modes.md`). The first
-time you run `/spec`, `/plan`, `/tasks`, `/implement`, `/review`,
-`/adr` or `/reconcile` in a repo that isn't registered yet, that
-command pauses, asks for the project name, build/test command and
-language settings, creates the subtree and its routing entry, and then
-continues with what you asked for. Run it once per machine; nothing is
-ever run per project.
+```
+python .claude/scripts/install_user_level.py                # dry run
+python .claude/scripts/install_user_level.py --apply        # install or upgrade
+```
+
+- Agents, commands and skills get a **namespace prefix** (default `cfw`):
+  `/cfw-spec`, `/cfw-quick`, `cfw-coder`, so they never collide with your
+  own `spec`/`plan` commands. Everything else lives in `~/.claude/cfw/`:
+  hooks, scripts, the registry, `framework.json`, and the shared `docs/`
+  root with the framework's reference ADRs.
+- Hooks do **nothing** in a repo that isn't registered, so unrelated
+  repos get zero footprint.
+- It asks once for a **projects root** (default `~/.claude/cfw/docs/`,
+  outside version control — any versioned or synced folder works too).
+- It never overwrites a file it doesn't own, refuses to overwrite one
+  you edited by hand (fix it here, then re-install), and records
+  everything in a manifest: `python ~/.claude/cfw/scripts/uninstall.py`
+  removes exactly that and restores `settings.json` byte for byte.
+
+Projects register lazily: the first `/cfw-spec`, `/cfw-plan`,
+`/cfw-quick`, ... in an unregistered repo asks for its name, build/test
+command and languages, then continues. Several existing repos can be
+registered in one pass, and an existing doc base can be imported with
+`migrate_context.py` (links rewritten and verified, source untouched).
 
 Two things to know before choosing it: it's per developer, so a
 teammate gets none of it (mode B is the shareable one), and if you've
-relocated your user-level config with `CLAUDE_CONFIG_DIR`, `~/.claude`
-is no longer what Claude Code reads — the setup detects that and asks,
-but a hook can't adapt to it at runtime.
+relocated your user-level config with `CLAUDE_CONFIG_DIR`, pass that
+directory with `--config-dir`.
 
 ## The pipeline
 
 | Stage | Command | Subagent(s) | Model tier |
 |---|---|---|---|
+| Fast lane (small changes) | `/quick` | `triage` → `quickfix` (trivial) or lite spec → `/implement` (standard) | haiku → haiku/sonnet |
 | Intake | `/spec` | — | — |
 | Technical plan | `/plan` | `triage` → `architect` (structural only) | haiku → opus |
 | Breakdown | `/tasks` | — (mechanical, no subagent) | — |
@@ -231,6 +243,8 @@ but a hook can't adapt to it at runtime.
 | Isolation | `/worktree` (also offered automatically by `/implement`) | — | — |
 | Post-hoc fidelity sweep | `/reconcile` (any time, against an `implemented` spec) | `reviewer` (sweep scope) | sonnet |
 | Ad hoc decision | `/adr` | `architect` | opus |
+| Architecture docs vs. code | `/update-docs` (census projects) | `reviewer` (doc verification, on `promote`) | sonnet |
+| Pipeline cost per feature | `/metrics` | — | — |
 | Framework setup | `/setup-framework` | — | — |
 
 Full rationale for this exact split → `docs/decisions/0001-tooling-agents-commands-skills.md`.
@@ -245,8 +259,8 @@ Why each role gets the model tier it gets → `docs/workflow/model-tiering.md`.
 ## What's genuinely generic vs. what's yours to define
 
 - **Fully generic, don't need editing beyond placeholders:** all 6
-  agents, all 9 commands, the `adr-writing`, `skill-authoring`, and
-  `plugin-awareness` skills, all 19 hook files (only
+  agents, all 12 commands, the `adr-writing`, `skill-authoring`, and
+  `plugin-awareness` skills, all 23 hook files (only
   `auto_format.py.example` and `dependency_audit.py.example` need a
   real command swapped in — the latter's `MANIFEST_COMMANDS` also needs
   trimming to your actual ecosystem(s), see ADR 0010), the workflow
@@ -300,6 +314,12 @@ decisions like tenancy strategy, monolith vs. microservices, and
 module scaffolding belong entirely to each project — the framework
 only supplies the process around them (how a decision gets recorded,
 how a checklist-shaped Skill gets written), never the decision itself.
+
+## Since the first real adoption (specs 0001–0003)
+
+Mode C hardening, living architecture docs and a proportional pipeline
+landed together — see `CHANGELOG.md` for the unified list and ADRs
+0017–0020 for the decisions.
 
 ## What's new here vs. the project this was extracted from
 

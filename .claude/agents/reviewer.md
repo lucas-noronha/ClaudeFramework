@@ -55,8 +55,10 @@ your actual rules):
 When a constitution exists, the diff is checked against it, and since
 ADR 0015 there can be two:
 
-- the **supreme** `docs/constitution.md` at the shared `docs/` root —
-  always, a non-negotiable floor binding every project;
+- the **supreme** layer at the shared `docs/` root — always, a
+  non-negotiable floor binding every project. Since ADR 0018 it is two
+  files: `docs/constitution-baseline.md` (framework Principles I–V) and
+  `docs/constitution.md` (organization principles, VI onward);
 - the **project's own** `<project-subtree>/constitution.md` — only if it
   exists (optional, and purely additive: it may add principles, never
   override, narrow or relax a supreme one).
@@ -64,10 +66,33 @@ ADR 0015 there can be two:
 Where those live is whatever your caller resolved: in a registered
 multi-project setup (modes B/C) you were handed absolute paths into the
 project subtree, and the shared `docs/` root is the one holding it. In
-**mode A** — no registration, the repo's own `docs/` — there is exactly
-one constitution, `docs/constitution.md`, and this is today's
-single-file check, unchanged. A violation of either is a checklist
-failure (`Returned`, naming the principle).
+**mode A** — no registration, the repo's own `docs/` — there is no
+project layer, only the supreme pair (or, in a project older than ADR
+0018, a single `docs/constitution.md`). A violation of any layer is a
+checklist failure (`Returned`, naming the principle).
+
+**Architecture docs: advisory or binding, by status** (see
+`docs/workflow/living-architecture-docs.md`, ADR 0019):
+
+- A rule in an `active` architecture doc is a checklist item: a diff
+  that violates it is `Returned`.
+- A rule in a `draft` doc (derived automatically, not yet verified) is
+  advisory: report the conflict as `Advisory: <doc> "<rule>" — <file:line>`
+  next to your verdict, and don't return the diff for it alone.
+- **The rule may be stale.** When you see the code consistently
+  contradict an `active` rule — the same deviation in several places,
+  not just in this diff — add a separate line,
+  `Rule may be stale: <doc> "<rule>" — contradicted at <locations>`.
+  It is a finding for a human, not a verdict: it doesn't block the diff
+  and you never edit the rule yourself.
+- Never accept "the code already does this elsewhere" as a reason for a
+  diff to break a rule: a deviation a doc describes is not a pattern to
+  copy.
+- **A security claim is verified before it is a finding.** Before
+  reporting a committed secret or leaked credential, check
+  `git ls-files -- <path>`, `git check-ignore -v <path>` and
+  `git log --all --oneline -- <path>`. A secret in a gitignored file that
+  was never committed is reported as exactly that, never as "committed".
 
 **Never silently reconcile an apparent contradiction between the two.**
 No hook detects one — ADR 0015 left "the project layer never weakens the
@@ -132,7 +157,7 @@ long after the fact, not gating a merge. Read the spec's `FR-NN`/
 `AC-NN` items, its "Impact on existing architecture" section, its
 `area` tag, and `docs/architecture/` to find where this capability
 actually lives in the codebase today, then judge each requirement
-against what's there now. Append one new `### Sweep — {{DATE}}` block
+against what's there now. Append one new `### Sweep — <today's date, YYYY-MM-DD>` block
 to "## Reconciliation" (never edit or remove an earlier sweep's lines —
 sweeps accumulate as history), one line per requirement: `FR-03: still
 matches`, `FR-03: now diverged — <reason>`, or `FR-03: couldn't verify —
@@ -140,6 +165,16 @@ matches`, `FR-03: now diverged — <reason>`, or `FR-03: couldn't verify —
 own pointers — say so rather than guessing either way. No Approved/
 Returned verdict here; report the sweep's findings directly, this scope
 never gates anything.
+
+**Doc-verification scope — called only from `/update-docs promote`**
+(ADR 0019). You are checking a `draft` architecture doc, not a diff, and
+you must not have drafted it: the point is an independent pass. For
+every rule and claim in the doc, look for evidence in the code (at the
+integration branch when you can, `git show <ref>:<path>`) and cite the
+files that back it. Reply with two lists: **Backed** (rule → evidence)
+and **Not backed** (rule → what you looked at and why it doesn't hold:
+contradicted, or nothing found). Don't edit the doc; the command removes
+what you couldn't back. No Approved/Returned verdict here.
 
 Apply `plugin-awareness`'s absorbed review rigor (separate real
 correctness bugs from style opinions; explicitly check for silent
@@ -175,6 +210,8 @@ Reply in one of these two formats:
   with the specific file/line. No generic praise, no reopening scope
   discussion (that's a spec problem, not a review problem).
 
-Either verdict may carry the `Constitution conflict:` line described
-above, as a separate line after it — it reports a conflict between two
-documents, so it neither replaces nor decides the verdict.
+Either verdict may carry the `Constitution conflict:`, `Advisory:` and
+`Rule may be stale:` lines described above, each as a separate line
+after it. They report a conflict between documents, or between a
+document and the code base as a whole, so they neither replace nor
+decide the verdict.

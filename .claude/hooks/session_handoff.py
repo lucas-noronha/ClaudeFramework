@@ -16,13 +16,18 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import state_file_path  # noqa: E402
+from _project_paths import hook_should_run, read_hook_input, state_file_path  # noqa: E402
 
 HANDOFF_FILENAME = "session-handoff.md"
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     message = (data.get("last_assistant_message") or "").strip()
     if not message:
         return

@@ -17,13 +17,18 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _pipeline_metrics import log_event  # noqa: E402
-from _project_paths import normalize, resolve_docs_root  # noqa: E402
+from _project_paths import hook_should_run, normalize, read_hook_input, resolve_docs_root  # noqa: E402
 
 STATUSES_ELIGIBLE_TO_FLIP = {"approved"}
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     path = data.get("tool_input", {}).get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
     if not path:
         return

@@ -15,13 +15,17 @@ one connected layer. This doc is the "how do these fit together and
 what do I actually do" summary — full rationale for each lives in its
 own ADR, linked below, not repeated here.
 
-## 1. `docs/constitution.md` — supreme, versioned principles
+## 1. The constitution — supreme, versioned principles
 
-A single file of non-negotiable principles (secrets handling, logging,
-input validation, least privilege, dependency vetting, plus a
-placeholder for a project-specific one) that `/spec`, `/plan`,
-`coder`/`quickfix`, and `reviewer` all check against — see
-`../constitution.md` itself and `../decisions/0007-constitution-document.md`.
+Non-negotiable principles that `/spec`, `/plan`, `coder`/`quickfix`, and
+`reviewer` all check against — see `../decisions/0007-constitution-document.md`.
+Since `../decisions/0018-constitution-baseline-layer.md` they come in
+layers by owner: `../constitution-baseline.md` (the framework's I–V:
+secrets, logging, input validation, least privilege, dependency
+vetting — replaced on every framework upgrade, never edited in a
+project), `../constitution.md` (the organization's or project's own,
+from VI, amended under its Governance section), and in modes B/C an
+optional project layer.
 It's the one exception to this framework shipping no default content:
 security hygiene is close to universal, unlike architecture.
 
@@ -87,9 +91,14 @@ four event types as the pipeline runs: `spec_created`,
 `spec_implemented` (together give you `draft`→`implemented` elapsed
 time per spec), `reconciliation_snapshot` (current matches/diverged/
 out-of-scope counts), and `reviewer_verdict` (Approved/Returned).
-Nothing summarizes it automatically — read it with `jq`, or ask an
-agent to summarize a stretch of it, when you actually want to know how
-the pipeline's been performing (`../decisions/0011-pipeline-metrics.md`).
+Since `../decisions/0020-proportional-pipeline-cost.md` it also gets
+`subagent_dispatched`, `gate_run` (with exit code), and the
+`feature_started`/`feature_finished` markers `/implement` and `/quick`
+write around each feature. `/metrics` turns those into a per-feature
+table — subagents, gate runs and failures, reviewer verdicts, rework —
+with the fast lane and the full path side by side, so `review_policy`
+gets chosen from data. For anything else, read the log with `jq`
+(`../decisions/0011-pipeline-metrics.md`).
 
 `reviewer_verdict` has a real, documented gap: it depends on your
 Claude Code version's subagent-dispatch tool being named `Task` or

@@ -11,14 +11,19 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import resolve_docs_root, resolve_project_root  # noqa: E402
+from _project_paths import hook_should_run, read_hook_input, resolve_docs_root, resolve_project_root  # noqa: E402
 
 CHARS_PER_TOKEN = 4  # rough, stdlib-only heuristic — good enough for a drift nudge
 OVERAGE_FACTOR = 2  # only nudge past 2x the stated budget, to avoid noisy near-misses
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     path = data.get("tool_input", {}).get("file_path", "") or data.get("tool_response", {}).get("filePath", "")
     if not path:
         return

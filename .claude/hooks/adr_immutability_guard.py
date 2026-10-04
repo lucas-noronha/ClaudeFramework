@@ -9,11 +9,16 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _project_paths import normalize, resolve_docs_root  # noqa: E402
+from _project_paths import hook_should_run, normalize, read_hook_input, resolve_docs_root  # noqa: E402
 
 
 def main() -> None:
-    data = json.load(sys.stdin)
+    # Registration gate (ADR 0017): a no-op for an unregistered repo under
+    # a user-level install; always open in modes A/B.
+    if not hook_should_run(os.environ.get("CLAUDE_PROJECT_DIR", ".")):
+        return
+
+    data = read_hook_input()
     tool_input = data.get("tool_input", {})
     path = tool_input.get("file_path", "")
     if not path:

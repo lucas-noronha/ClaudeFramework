@@ -37,13 +37,16 @@ area: <short-kebab-case tag for the functional domain/capability this
   spec belongs to — set automatically by /spec, never asked of the
   human; see docs/decisions/0008-spec-area-lineage.md>
 relates_to: []
+resumo: <the one question this spec answers — index tables copy it verbatim>
+naoResponde: <when opening this spec is wasted — optional>
 context_budget: ~350 tokens
 ---
 ```
 
 `status` lifecycle: `draft` (written by `/spec`, not yet reviewed by
-the stakeholder) → `approved` (stakeholder signed off, set by hand
-once they approve, before `/plan` runs) → `implemented` (set
+the stakeholder) → `approved` (stakeholder signed off; set by `/plan`,
+which asks whether to approve a `draft` spec before planning it — or
+`/quick` for a lite spec) → `implemented` (set
 automatically by `spec_status_sync.py` once every box in "## Tasks" is
 checked — never set this by hand) → `abandoned` (dropped before or
 during implementation, won't be pursued — set by hand at any point; a

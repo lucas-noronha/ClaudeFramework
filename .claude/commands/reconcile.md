@@ -35,7 +35,7 @@ to diff against after the fact).
    pointers plus `docs/architecture/`), so it can judge current code
    state against each `FR-NN`/`AC-NN` the same way it already judges
    Definition of Done for `/review`, just without a diff to anchor on.
-3. `reviewer` appends one new `### Sweep — {{DATE}}` block to the
+3. `reviewer` appends one new `### Sweep — <today's date, YYYY-MM-DD>` block to the
    spec's "## Reconciliation" section, one line per `FR-NN`/`AC-NN`:
    `still matches`, `now diverged — <reason>`, or `couldn't verify —
    <why>` if the relevant code isn't findable from the spec's own

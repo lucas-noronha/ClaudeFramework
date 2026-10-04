@@ -8,10 +8,36 @@ skill's check — it resolves where this session's `docs/` and `CLAUDE.md`
 actually live (registering the project first if it isn't yet), and in
 the common case costs one check and changes nothing.
 
-Prerequisite: the spec at $ARGUMENTS needs `status: approved`. If it
-isn't (including `abandoned` — don't resurrect a dropped feature
-silently), stop and warn — don't proceed with a technical plan over an
-unvalidated or dead requirement.
+**Prerequisite — the spec's `status`, settled here.** A technical plan is
+never written over an unvalidated or dead requirement, and approving is
+the human's call. This is the moment the pipeline asks for it, so nobody
+has to remember to edit the frontmatter by hand:
+
+- **`approved`** → continue with step 1.
+- **`draft`** → ask, with a single `AskUserQuestion`: "Spec NNNN is still
+  `draft`. Approve it now?"
+  - **Approve and plan** — say plainly what approving means: the
+    requirements are validated, with the stakeholder when this project
+    has one. If the project has a language split, name the
+    `.validation-<stakeholder_lang_code>.md` companion, and list any of
+    its validation checkboxes still unchecked, or say that the companion
+    doesn't exist, so the user approves knowing that.
+  - **Not yet** — stop here. Say what's left (the stakeholder round, the
+    open questions `/spec` listed) and that the next `/plan` will ask
+    again.
+  - **Abandon it** — set `status: abandoned` and stop.
+
+  On approval, change only the canonical spec's frontmatter `status:
+  draft` → `status: approved` (one edit, nothing else in the file), say
+  so in one line, then continue with step 1. In a language-split
+  project, that edit makes `validation_sync_check.py` ask for the
+  companion to be synced. Do that before planning.
+- **`abandoned`** → stop and warn. Don't resurrect a dropped feature
+  silently. If the user wants it back, they set it to `draft` and run
+  `/plan` again.
+- **`implemented`** → stop: there is nothing left to plan. Point at
+  `/reconcile` for checking it against today's code, or at `/spec` for a
+  follow-up.
 
 1. Delegate the spec's complexity classification to the `triage`
    subagent (trivial / standard / structural).
@@ -43,7 +69,8 @@ unvalidated or dead requirement.
    plan around it silently. **There can be two of them, and you check
    the approach against both whenever both exist** (see
    `docs/decisions/0015-unified-docs-tree-and-layered-constitution.md`):
-   the supreme `docs/constitution.md` at the **shared** `docs/` root
+   the supreme layer at the **shared** `docs/` root —
+     `docs/constitution-baseline.md` plus `docs/constitution.md` (ADR 0018) —
    (always, non-negotiable floor — it is shared material, so
    `project-registration`'s step 4 tells you where to read it from),
    plus `<project-subtree>/constitution.md` **if that project has one**
@@ -51,8 +78,8 @@ unvalidated or dead requirement.
    relaxing a supreme principle; if it looks like it contradicts one,
    flag that as its own finding rather than reconciling it in the plan).
    In **mode A** (`project-registration` stopped at its step 1 — no
-   registry entry, relative paths unchanged) there is exactly one
-   constitution, `docs/constitution.md`, and this is today's
+   registry entry, relative paths unchanged) there is no project layer,
+   just the supreme pair in the repo's own `docs/`, and this is today's
    single-file check, unchanged.
 6. **Definition of Done + Test plan** (standard and structural alike):
    write two short checklists, both numbered against the spec's own

@@ -1,0 +1,3 @@
+# Line endings: LF in the repository, CRLF in the working tree.
+# text=auto lets git detect binaries; eol=crlf is the checkout form.
+* text=auto eol=crlf
