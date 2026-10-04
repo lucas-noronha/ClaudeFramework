@@ -55,8 +55,8 @@ framework ADR 0001 and the
 5. **New architecture decision during implementation?** It becomes a
    new ADR before the code is accepted — never an implicit decision
    left only in the code.
-6. **Reconciliation doesn't stop at merge.** `reviewer` records
-   spec-vs-code fidelity per task while a spec is being implemented,
+6. **Reconciliation doesn't stop at merge.** `reviewer` reports
+   spec-vs-code fidelity per task, and `/implement` records it, while a spec is being implemented,
    and `/reconcile` lets you re-check an already-`implemented` spec
    against the codebase any time later — see
    `governance-and-observability.md` for both mechanisms and how they

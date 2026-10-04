@@ -65,9 +65,11 @@ frontmatter to match.
 Two mechanisms, not one, covering two different moments:
 
 - **Per-task, automatic, inside `/implement`**: after each coder-tier
-  task's review, `reviewer` appends a line per `FR-NN`/`AC-NN` the task
-  declared to the spec's own "## Reconciliation" section — matches
-  spec, or diverged and why (framework ADR 0009).
+  task's review, `reviewer` returns a line per `FR-NN`/`AC-NN` the task
+  declared under a `Reconciliation:` heading, and `/implement` appends
+  them to the spec's own "## Reconciliation" section — matches spec, or
+  diverged and why (framework ADR 0009, 0024 and 0025). Under
+  `final-only`, `/review` writes its own.
   `/review`'s final pass checks every requirement has at least one
   entry before approving.
 - **On-demand, any time, via `/reconcile <spec path>`**: for a spec
@@ -80,7 +82,7 @@ Two mechanisms, not one, covering two different moments:
   long-lived spec, or whenever you suspect drift, through whatever
   scheduling this project already has — nothing here runs it for you.
 
-Both write to the same "## Reconciliation" section; read it top to
+Both end up in the same "## Reconciliation" section; read it top to
 bottom for a spec's full fidelity history, per-task entries first, then
 any sweeps.
 
@@ -94,18 +96,29 @@ out-of-scope counts), and `reviewer_verdict` (Approved/Returned).
 Since framework ADR 0020 it also gets
 `subagent_dispatched`, `gate_run` (with exit code), and the
 `feature_started`/`feature_finished` markers `/implement` and `/quick`
-write around each feature. `/metrics` turns those into a per-feature
-table — subagents, gate runs and failures, reviewer verdicts, rework —
-with the fast lane and the full path side by side, so `review_policy`
-gets chosen from data. For anything else, read the log with `jq`
-(framework ADR 0011).
+write around each feature. Since framework ADR 0025 it also gets
+`subagent_started`/`subagent_stopped` (from the `SubagentStart` and
+`SubagentStop` hooks, carrying `agent_id`), and `gate_run` carries the
+`agent_id`, whether it `blocked` the agent (a failure exits 2 with a
+bounded tail of the output, which Claude Code hands back where it resumes
+the agent; it doesn't for one ending through `SubagentHandback`, so
+`/implement` reads the result with `metrics.py gates` and returns the
+failure itself),
+and `concurrent`, the number of code-capable siblings that overlapped
+it. `/implement` marks each parallel batch with `metrics.py wave-start`.
+`/metrics` turns those into a per-feature
+table — subagents, gate runs and failures (split into solo and
+concurrent), reviewer verdicts, rework — with the fast lane and the full
+path side by side, so `review_policy` gets chosen from data;
+`metrics.py gates` lists the individual gate runs. For anything else,
+read the log with `jq` (framework ADR 0011).
 
-`reviewer_verdict` has a real, documented gap: it depends on your
-Claude Code version's subagent-dispatch tool being named `Task` or
-`Agent` (both matched). If you never see one after a few `/review`
-runs, check `jq 'select(.event=="reviewer_verdict")' .claude/pipeline-metrics.jsonl`
-and adjust the hook's matcher in `settings.json` if your version uses a
-different name.
+`reviewer_verdict` is read from the reviewer's own transcript when it
+stops (`SubagentStop`), so it no longer depends on the name of the
+dispatch tool, and a background reviewer is counted. The `Task`/`Agent`
+PostToolUse entries only feed `subagent_dispatched`. A reviewer whose
+verdict can't be read is flagged by `/metrics` as a missing verdict; to
+inspect, `jq 'select(.event=="reviewer_verdict")' .claude/pipeline-metrics.jsonl`.
 
 ## How these four relate
 

@@ -28,11 +28,24 @@ Known gap, named rather than hidden: a non-code-writer agent that edits
 code only through Bash is invisible to step 2. The final `/review` still
 runs over the whole diff.
 
-Exits with the command's own exit code, untouched: swallowing a non-zero
-status would quietly turn the framework's one hard quality gate into a
-no-op. A missing `build_test_cmd` still fails loud — on the one hook
-whose entire job is running that command, its absence is a real
-misconfiguration.
+Exit codes (framework ADR 0025). A pass exits 0. A failure exits 2 while
+`stop_hook_active` is false: Claude Code hands stderr (a header plus the last
+~80 lines / 8 KB of the build's output) back to the stopping agent so it fixes
+its own failure before it ends. When `stop_hook_active` is true the agent
+already got that chance, so the gate exits 1 (non-blocking) to break the loop.
+The hand-back is best-effort: a subagent that ends through a `SubagentHandback`
+tool call isn't resumed by exit 2 (spec 0007 task 9), so `/implement` reads
+this gate's `gate_run` with `metrics.py gates` and returns a failure itself.
+A missing `build_test_cmd` stays a non-blocking exit 1: on the one hook whose
+entire job is running that command, its absence is a real misconfiguration,
+but not something the agent can fix.
+
+`concurrent` (logged on `gate_run`, omitted when unknown) is the number of
+other, code-capable subagents of this checkout that overlapped this one in the
+open feature (or the last 60 minutes), read from a byte-capped tail of the
+metrics log. When above 0 the failure header warns the agent that a failure
+may come from a sibling's files and that it must not touch files outside its
+own task.
 
 `shell=True` is deliberate and no wider a trust boundary than before:
 the string comes from the project's own config, written by setup or
@@ -44,34 +57,28 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _pipeline_metrics import log_event  # noqa: E402
+from _pipeline_metrics import LOG_FILENAME, log_event  # noqa: E402
+from _subagents import WRITE_TOOLS, is_read_only, read_jsonl, role_of  # noqa: E402
 from _project_paths import (  # noqa: E402
-    framework_config,
     hook_should_run,
+    linked_worktree,
     load_project_config,
     normalize,
     project_config_path,
     read_hook_input,
     resolve_docs_root,
+    state_file_path,
 )
 
 CONFIG_KEY = "build_test_cmd"
 CODE_WRITER_ROLES = {"coder", "quickfix"}
-WRITE_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-# Built-in subagents that never change a project's code.
-NON_CODE_BUILTINS = {"Explore", "Plan", "claude-code-guide", "statusline-setup", "output-style-setup"}
-
-
-def role_of(agent_type: str) -> str:
-    """`cfw-coder` → `coder`: strips an install prefix, so a user-level
-    install's renamed agents still match (framework ADR 0017).
-    """
-    prefix = framework_config().get("prefix")
-    if prefix and agent_type.startswith(prefix + "-"):
-        return agent_type[len(prefix) + 1:]
-    return agent_type
+LOG_TAIL_BYTES = 256 * 1024
+CONCURRENT_WINDOW_SECONDS = 60 * 60
+OUTPUT_TAIL_LINES = 80
+OUTPUT_TAIL_BYTES = 8 * 1024
 
 
 def _inside(path: str, root: str) -> bool:
@@ -119,27 +126,6 @@ def edited_code_files(transcript_path: str, project: str):
     return edited
 
 
-def _agent_definition_is_read_only(project: str, agent_type: str) -> bool:
-    config = framework_config()
-    candidates = [os.path.join(project, ".claude", "agents", agent_type + ".md")]
-    if config.get("config_dir"):
-        candidates.append(os.path.join(config["config_dir"], "agents", agent_type + ".md"))
-    candidates.append(os.path.expanduser(os.path.join("~", ".claude", "agents", agent_type + ".md")))
-    for candidate in candidates:
-        try:
-            with open(candidate, encoding="utf-8") as f:
-                head = f.read(2000)
-        except OSError:
-            continue
-        fm = re.match(r"^---\n(.*?)\n---", head, re.DOTALL)
-        tools = re.search(r"^tools:\s*(.+)$", fm.group(1), re.MULTILINE) if fm else None
-        if not tools:
-            return False  # no tools line = inherits every tool, including writes
-        listed = {t.strip() for t in tools.group(1).split(",")}
-        return not (listed & (WRITE_TOOLS | {"Bash"}))
-    return False
-
-
 def should_run_gate(data: dict, project: str):
     """`(run, reason)` — see the module docstring for the four rules."""
     agent_type = str(data.get("agent_type") or data.get("subagent_type") or "")
@@ -154,9 +140,93 @@ def should_run_gate(data: dict, project: str):
                 return True, f"{agent_type or 'subagent'} edited {len(edited)} code file(s)"
             return False, f"{agent_type or 'subagent'} edited no code"
 
-    if agent_type in NON_CODE_BUILTINS or (agent_type and _agent_definition_is_read_only(project, agent_type)):
+    if is_read_only(project, agent_type):
         return False, f"{agent_type} is read-only"
     return True, "could not tell whether code changed"
+
+
+def concurrent_agents(project: str, agent_id, now=None):
+    """Other code-capable subagents of this checkout that overlapped the
+    stopping one, or None when it has no start event to measure from.
+
+    Reads only a byte-capped tail of the metrics log. The window is the
+    open feature of this checkout (its last unfinished `feature_started`),
+    or the last 60 minutes when none is open. A sibling counts when it
+    started inside the window before now and is in flight (its latest event is
+    a start or a blocking gate) or stopped only after this agent started. Read-only agents never count.
+    """
+    if not agent_id:
+        return None
+    now = time.time() if now is None else now
+    log_path = state_file_path(project, LOG_FILENAME, "project")
+    wt = linked_worktree(project)
+    checkout = wt["admin"] if wt else "main"
+    events = [
+        e for e in read_jsonl(log_path, tail_bytes=LOG_TAIL_BYTES)
+        if (e.get("checkout") or "main") == checkout and isinstance(e.get("ts"), (int, float))
+    ]
+    own_start = None
+    open_features = []
+    for e in events:
+        kind = e.get("event")
+        if kind == "subagent_started" and e.get("agent_id") == agent_id:
+            own_start = e["ts"]
+        elif kind == "feature_started":
+            open_features.append(e)
+        elif kind == "feature_finished":
+            for i in range(len(open_features) - 1, -1, -1):
+                if open_features[i].get("feature") == e.get("feature"):
+                    del open_features[i]
+                    break
+    if own_start is None:
+        return None
+    window_start = open_features[-1]["ts"] if open_features else now - CONCURRENT_WINDOW_SECONDS
+    # Latest start / stop / blocking gate per agent: a start or a blocked gate
+    # (the agent was sent back to work) means in flight.
+    latest = {}
+    for e in events:
+        kind = e.get("event")
+        if kind == "gate_run" and e.get("blocked") is True:
+            kind = "blocked"
+        elif kind not in ("subagent_started", "subagent_stopped"):
+            continue
+        if e.get("agent_id"):
+            latest[e["agent_id"]] = (e["ts"], kind)
+    siblings = set()
+    for e in events:
+        other = e.get("agent_id")
+        if e.get("event") != "subagent_started" or not other or other == agent_id:
+            continue
+        if e["ts"] < window_start or e["ts"] > now:
+            continue
+        last_ts, last_kind = latest[other]
+        if last_kind == "subagent_stopped" and last_ts < own_start:
+            continue
+        if is_read_only(project, str(e.get("agent_type") or "")):
+            continue
+        siblings.add(other)
+    return len(siblings)
+
+
+def output_tail(text: str) -> str:
+    """The last ~80 lines of `text`, capped at ~8 KB (cut on a character)."""
+    tail = "\n".join(text.splitlines()[-OUTPUT_TAIL_LINES:])
+    raw = tail.encode("utf-8")
+    if len(raw) > OUTPUT_TAIL_BYTES:
+        tail = raw[-OUTPUT_TAIL_BYTES:].decode("utf-8", errors="ignore")
+    return tail
+
+
+def failure_header(command: str, returncode: int, concurrent) -> str:
+    lines = [f"Build/test gate FAILED (exit {returncode}): {command}"]
+    if concurrent:
+        lines.append(
+            f"{concurrent} other agent(s) are working in this checkout at the same time, so this "
+            "failure may come from a sibling's files. Fix only what your own task changed and "
+            "do not touch files outside your task."
+        )
+    lines.append("Last lines of the output:")
+    return "\n".join(lines)
 
 
 def main() -> int:
@@ -185,17 +255,40 @@ def main() -> int:
         )
         return 1
 
-    # No capture: stdout/stderr are inherited so the build's own output
-    # still streams into the session exactly as a literal command did.
+    agent_id = data.get("agent_id")
+    concurrent = concurrent_agents(project, agent_id)
+
+    # Output is captured (stderr merged into stdout) so a failure can hand a
+    # bounded tail back to the agent; a pass echoes it unchanged.
     # cwd is the code repo, not the resolved subtree — the source to
     # build lives in the target repo, only its configuration doesn't.
-    returncode = subprocess.run(command.strip(), shell=True, cwd=project).returncode
+    proc = subprocess.run(
+        command.strip(), shell=True, cwd=project,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    output = proc.stdout.decode("utf-8", errors="replace")
+    failed = proc.returncode != 0
+    blocked = failed and not data.get("stop_hook_active")
+    fields = {}
+    if concurrent is not None:
+        fields["concurrent"] = concurrent
     log_event(
         project, "gate_run",
         agent_type=data.get("agent_type") or data.get("subagent_type"),
-        reason=reason, exit_code=returncode,
+        reason=reason, exit_code=proc.returncode, agent_id=agent_id, blocked=blocked, **fields,
     )
-    return returncode
+    if not failed:
+        sys.stdout.write(output)
+        sys.stdout.flush()
+        return 0
+    stream = sys.stderr
+    if blocked:
+        print(failure_header(command.strip(), proc.returncode, concurrent), file=stream)
+        print(output_tail(output), file=stream)
+        return 2
+    print(failure_header(command.strip(), proc.returncode, concurrent), file=stream)
+    print(output_tail(output), file=stream)
+    return 1
 
 
 if __name__ == "__main__":

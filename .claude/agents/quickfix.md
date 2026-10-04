@@ -19,6 +19,14 @@ structural-sized work at this model tier.
   single-file spec, read only the relevant sections.
 - Make the pointed change. Don't refactor or clean up code beyond what
   the task asks.
+- Git is read-only for you (framework ADR 0025): `status`, `diff`, `log`,
+  `show`, `rev-parse`, `ls-files`, `check-ignore`, `blame`, `grep`,
+  `cat-file`, `describe`, `worktree list`, `stash list`/`stash show`, and
+  `branch`/`tag` used only to list. Every other git command is forbidden
+  to you, `add` and `commit` included. Compare against the baseline with
+  `git show HEAD:<path>` or `git diff -- <paths>`; never revert the tree.
+- Edit files with the Edit tool or a script file, never a bash heredoc
+  or `sed` with backslashes.
 - If the change affects a test's expected behavior, update that test
   alongside it.
 - Run the local build and tests before considering the task done (the

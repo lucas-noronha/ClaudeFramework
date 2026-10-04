@@ -35,8 +35,12 @@ class SpecFoldersMetricsTests(TempCase):
         return [e for e in self.events() if e.get("event") == "reconciliation_snapshot"]
 
     def verdict_for(self, prompt):
-        payload = {"tool_name": "Task", "tool_input": {"subagent_type": "reviewer", "prompt": prompt},
-                   "tool_response": "Approved - fine"}
+        transcript = os.path.join(self.tmp, "reviewer.jsonl")
+        records = [{"type": "user", "message": {"content": prompt}},
+                   {"type": "assistant", "message": {"id": "m1", "content": [{"type": "text", "text": "Approved - fine"}]}}]
+        self.write(transcript, "\n".join(json.dumps(r) for r in records) + "\n")
+        payload = {"hook_event_name": "SubagentStop", "agent_type": "reviewer", "agent_id": "r1",
+                   "agent_transcript_path": transcript}
         self.hook(HOOKS, "pipeline_metrics.py", payload, self.repo)
         return [e for e in self.events() if e.get("event") == "reviewer_verdict"][-1]
 

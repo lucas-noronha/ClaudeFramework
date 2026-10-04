@@ -820,9 +820,10 @@ and why the three links themselves still need none.
      writing.
    - Worth stating in the close-out: in this variant the deterministic
      gate runs `run_build_test.py`, which reads `build_test_cmd` from
-     step 8's file at runtime and propagates its exit code — so the gate
-     still blocks on a failed build exactly as in mode A, it just stops
-     being hardcoded into the settings file.
+     step 8's file at runtime and blocks the stopping agent with exit
+     code 2 and a bounded tail of the output on a failure (framework ADR
+     0025) — so the gate still blocks on a failed build exactly as in mode
+     A, it just stops being hardcoded into the settings file.
 10. Shared-ancestor `CLAUDE.md` bootstrap note (the file every Claude
     Code session inside the target repo auto-loads via the
     directory-tree walk, independent of whether any link from step 6

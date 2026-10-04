@@ -129,7 +129,9 @@ decision (e.g. block an edit) — no LLM call involved. Wired up in
 | `project_tools.py` | `PostToolUse` (Edit/Write) | Runs the formatter / dependency-audit commands a project declares under `project_tools` in its own config; nothing when absent. The shared-install replacement for the two `.example` hooks below (framework ADR 0017) |
 | `auto_format.py.example` | `PostToolUse` (Edit/Write) | Template: runs your stack's formatter/linter on the file just touched. Rename to `auto_format.py` once you've filled in the real commands |
 | `dependency_audit.py.example` | `PostToolUse` (Edit/Write, no-ops unless the file is a recognized dependency manifest) | Template: runs your ecosystem's vulnerability audit (`npm audit`, `pip-audit`, …) when a manifest changes, reports findings as a `systemMessage`. Rename to `dependency_audit.py` once you've trimmed it to your real ecosystem(s) (framework ADR 0010) |
-| `pipeline_metrics.py` | `PostToolUse` (spec Write/Edit; subagent dispatch matched on `Task`/`Agent`) | Appends `spec_created`, `reconciliation_snapshot` (counted in `reconciliation.md`, or in a lite/legacy spec's own section), and `reviewer_verdict` events (spec id from either path shape) to the git-ignored `.claude/pipeline-metrics.jsonl` — raw observability, no dashboard. `reviewer_verdict` depends on your Claude Code version's subagent-dispatch tool actually being named `Task` or `Agent`; check empirically (framework ADR 0011) |
+| `pipeline_metrics.py` | `PostToolUse` (spec Write/Edit; subagent dispatch matched on `Task`/`Agent`), `SubagentStart`, `SubagentStop` | Appends `spec_created`, `reconciliation_snapshot` (counted in `reconciliation.md`, or in a lite/legacy spec's own section) and `subagent_dispatched` events to the git-ignored `.claude/pipeline-metrics.jsonl` — raw observability, no dashboard. Since framework ADR 0025 the lifecycle events `subagent_started`/`subagent_stopped` (with `agent_id`) come from `SubagentStart`/`SubagentStop`, and `reviewer_verdict` is read from the reviewer's own transcript (`agent_transcript_path`) on `SubagentStop`, so a background reviewer is counted too. The `Task`/`Agent` PostToolUse entries remain only for `subagent_dispatched` (framework ADR 0011) |
+| `subagent_git_guard.py` | `PreToolUse` (Bash/PowerShell) | Inside a subagent only (the input carries `agent_id`), blocks any git command outside the read-only allowlist (`status`, `diff`, `log`, `show`, `rev-parse`, `ls-files`, `check-ignore`, `blame`, `grep`, `cat-file`, `describe`, and listing forms of `worktree`/`stash`/`branch`/`tag`), so parallel tasks can't stage, commit or revert each other's work. The main session is never touched (framework ADR 0025) |
+| `_subagents.py` | *(not wired — imported)* | Shared helpers for the subagent-aware hooks: role normalization, the read-only rule and the transcript readers (framework ADR 0025) |
 | `_pipeline_metrics.py` | *(not wired — imported)* | Shared `log_event()` helper both `pipeline_metrics.py` and `spec_status_sync.py` import; not a hook entry point itself |
 | `_spec_layout.py` | *(not wired — imported; also a CLI)* | The spec layout resolver (framework ADR 0024). `classify()` recognizes a legacy single file, a folder file with its role (spec/plan/tasks/reconciliation/note) and a lite folder (`lite: true`); anything deeper is ignored. CLI: `resolve <path\|folder\|NNNN>` and `next-number`. CRLF-safe, stdlib |
 | `_project_paths.py` | *(not wired — imported; also a CLI)* | The routing lookup every multi-project-aware hook shares (framework ADR 0013/0014): `resolve_project_root()` (this session's project subtree), `load_project_config()`, `state_file_path()`, `resolve_shared_docs_root()`, and `project_relative_path()` — the last being how a directory-scoped hook decides a `file_path` is its business whether it arrived relative or absolute (see below). Reads a user-level install's `framework.json` before inferring anything, and holds the **registration gate** `hook_should_run()` every hook calls first: under a user-level install an unregistered repo gets no hook effect at all (framework ADR 0017). `python _project_paths.py describe` prints the whole resolution as JSON — the `project-registration` skill's probe. Fails open to classic single-repo behaviour everywhere else |
@@ -176,7 +178,10 @@ number until this hook was added to catch it going forward.
 
 ## settings.example.json
 
-Wires every hook above to its event. Since framework ADR 0020 the build/test gate
+Wires every hook above to its event, including (framework ADR 0025)
+`SubagentStart` and a second `SubagentStop` group, both running
+`pipeline_metrics.py` after the gate, and a `Bash|PowerShell` PreToolUse
+entry running `subagent_git_guard.py`. Since framework ADR 0020 the build/test gate
 calls `run_build_test.py` (which reads `build_test_cmd` from the
 optional mode A config `.claude/project-config.json` and skips read-only
 subagents), and the retired validation sync is no longer wired. Rename to
@@ -247,8 +252,15 @@ classic file — four things differ:
 - **The `SubagentStop` gate runs `run_build_test.py`** instead of a
   literal `{{BUILD_TEST_CMD}}`. That hook reads `build_test_cmd` from
   the current project's `project-config.json` (via the routing lookup)
-  and executes it, propagating its exit code — so the gate still blocks
-  on a failed build exactly as in mode A.
+  and executes it, so the gate still blocks on a failed build as in
+  mode A. Since framework ADR 0025 a failure exits 2 with a bounded tail
+  of the output handed back to the stopping agent where Claude Code
+  resumes it (exit 1 when `stop_hook_active`, to break the loop; a
+  subagent ending through `SubagentHandback` isn't resumed, so
+  `/implement` returns a failure itself after `metrics.py gates`), and the gate stays first in the `SubagentStop` list; the
+  lifecycle/verdict group and `SubagentStart` follow the same template as
+  mode A, so mode C inherits them and the installer records them for
+  uninstall.
 - **(Superseded by framework ADR 0020.)** The two validation-summary `agent` hooks
   described below are gone from both settings templates; the command
   hook `validation_sync_check.py` decides from the project config and

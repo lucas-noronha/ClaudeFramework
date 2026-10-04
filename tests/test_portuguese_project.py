@@ -105,9 +105,12 @@ class TestPortugueseProject(TempCase):
     def test_l22_reviewer_verdict_parses_with_portuguese_body(self):
         for reply, verdict in (("Approved\n\nTudo conforme a especificação.", "Approved"),
                                ("**Returned**\n\nFalta o teste da tarefa 3.", "Returned")):
-            payload = {"tool_name": "Agent",
-                       "tool_input": {"subagent_type": "reviewer", "prompt": "Revise docs/product/specs/0001-reposicao.md"},
-                       "tool_response": {"content": reply}}
+            transcript = os.path.join(self.tmp, "reviewer.jsonl")
+            records = [{"type": "user", "message": {"content": "Revise docs/product/specs/0001-reposicao.md"}},
+                       {"type": "assistant", "message": {"id": "m1", "content": [{"type": "text", "text": reply}]}}]
+            self.write(transcript, "\n".join(json.dumps(r, ensure_ascii=False) for r in records) + "\n")
+            payload = {"hook_event_name": "SubagentStop", "agent_type": "reviewer", "agent_id": "r1",
+                       "agent_transcript_path": transcript}
             self.hook(HOOKS, "pipeline_metrics.py", payload, self.repo)
             last = [e for e in self.events() if e["event"] == "reviewer_verdict"][-1]
             self.assertEqual((last["verdict"], last["spec_id"]), (verdict, "0001"))

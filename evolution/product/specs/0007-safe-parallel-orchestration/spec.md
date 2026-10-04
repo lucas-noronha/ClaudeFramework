@@ -1,7 +1,7 @@
 ---
 doc_type: spec
 id: 0007
-status: approved
+status: implemented
 tier: structural
 area: pipeline-cost
 relates_to: [0003, 0006]
@@ -184,8 +184,12 @@ tasks do not get worktrees of their own.
 
 - FR-19: The build/test gate **blocks**. When the project's build/test command fails,
   `run_build_test.py` exits with code 2 and writes the command's failure output (bounded to its
-  last lines) to stderr. Claude Code then keeps the subagent running and hands it the failure to
-  fix. A passing run still exits 0. A missing `build_test_cmd` stays a non-blocking nudge.
+  last lines) to stderr. Where Claude Code honours it, it keeps the subagent running and hands it
+  the failure to fix. That hand-off is best-effort: a subagent that ends through a
+  `SubagentHandback` tool call is not resumed by exit 2 (captured in task 9). So `/implement`
+  never relies on it: it reads each task's gate result with `metrics.py gates` once the
+  subagent's completion notification arrives, and returns a failure to that subagent itself.
+  A passing run still exits 0. A missing `build_test_cmd` stays a non-blocking nudge.
   A failure the hook tags as concurrent (FR-05) still blocks the subagent; the tag only changes
   how `/metrics` counts it and lets the coordinator re-check it once (FR-07). The
   `/setup-framework` sentences that call the gate blocking become true, and they are checked
@@ -315,9 +319,11 @@ tasks do not get worktrees of their own.
   the prompt rule only. (NFR-06, FR-05, FR-12)
 
 - [ ] AC-15: A `coder` stop with a failing suite gets exit code 2 and the failure tail on stderr,
-  so the subagent is sent back; a passing suite exits 0; a missing `build_test_cmd` does not
-  block. Verified with the hook run against a temp project, and once against a real Claude Code
-  session (the exit-2 semantics are captured like the other NFR-06 fields). (FR-19)
+  and the failure reaches the subagent either way: through exit 2 where Claude Code resumes it,
+  otherwise through `/implement` returning it after reading `metrics.py gates`. A passing suite
+  exits 0; a missing `build_test_cmd` does not block. Verified with the hook run against a temp
+  project, and once against a real Claude Code session (the exit-2 semantics are captured like
+  the other NFR-06 fields). (FR-19)
 
 ## Impact on existing architecture
 

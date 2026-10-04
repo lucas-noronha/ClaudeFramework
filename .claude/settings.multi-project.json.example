@@ -47,6 +47,25 @@
             "command": "{{PYTHON}} \"{{HOOKS_DIR}}/secret_leak_guard.py\""
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON}} \"{{HOOKS_DIR}}/subagent_git_guard.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON}} \"{{HOOKS_DIR}}/pipeline_metrics.py\""
+          }
+        ]
       }
     ],
     "SubagentStop": [
@@ -57,6 +76,14 @@
             "command": "{{PYTHON}} \"{{HOOKS_DIR}}/run_build_test.py\"",
             "timeout": 180,
             "statusMessage": "Running build + tests (deterministic gate)..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON}} \"{{HOOKS_DIR}}/pipeline_metrics.py\""
           }
         ]
       }

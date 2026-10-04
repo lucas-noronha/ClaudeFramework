@@ -22,6 +22,14 @@ other in-flight tasks' changes too, not just the one you were asked to
 review. If you weren't handed an explicit scope, stop and ask for one
 rather than guessing.
 
+**Git is read-only for you** (framework ADR 0025): `status`, `diff`,
+`log`, `show`, `rev-parse`, `ls-files`, `check-ignore`, `blame`, `grep`,
+`cat-file`, `describe`, `worktree list`, `stash list`/`stash show`, and
+`branch`/`tag` used only to list. Every other git command is forbidden
+to you, `add` and `commit` included. To compare against the baseline,
+read `git show HEAD:<path>` or `git diff -- <paths>`; never revert the
+tree to check.
+
 This framework ships no default checklist — what belongs on it is
 entirely a property of your project's actual architecture, not
 something a generic template should presume. Build the real one from
@@ -131,24 +139,24 @@ Language: write free text in {{LANGUAGE}}; frontmatter keys, enumerated values, 
 **What you load** (framework ADR 0024): the coder's file list, the task's
 text, `spec.md`, and the reconciliation target your caller names:
 `reconciliation.md` (frontmatter `doc_type: spec-reconciliation`) in a spec
-folder, or the `## Reconciliation` section of a legacy single file. Write
-reconciliation lines only there, never into `spec.md`, `plan.md` or
-`tasks.md`; wherever this file says "the spec's `## Reconciliation`", it
-means that target.
+folder, or the `## Reconciliation` section of a legacy single file. In a
+per-task review you only read it; you never write to it. Only the
+single-writer paths write there (a whole-feature `/review` under
+`final-only`, a `/reconcile` sweep), and never into `spec.md`, `plan.md`
+or `tasks.md`. Wherever this file says
+"the spec's `## Reconciliation`", it means that target.
 
 **Reconciliation, per-task scope only** (see
 framework ADR 0009). After deciding
 Approved/Returned, read this task's own line in the spec's "## Tasks"
 section for its `Tests:` field — the `FR-NN`/`AC-NN` tags it declared.
-For each one, append exactly one line to the spec's own
-"## Reconciliation" section (the spec file itself, not part of the
-diff scope above — appending here doesn't widen what you reviewed):
-`- [task N] FR-03: matches spec` or `- [task N] FR-03: diverged — <one
-clause, what/why>`, plus one line for any change in this diff not tied
-to a tag this task declared (`- [task N] out of scope: <file> — not
-covered by this task's Tests field`). Append-only — never rewrite or
-remove another task's entry, it may already be there from a parallel
-wave. This is bookkeeping, not a second gate: a deliberate, reasonable
+For each one, return exactly one line in your final message, under a
+`Reconciliation:` heading, after the verdict and any other lines — you
+never write them to the spec; the coordinator (`/implement`) appends
+them: `- [task N] FR-03: matches spec` or `- [task N] FR-03: diverged —
+<one clause, what/why>`, plus one line for any change in this diff not
+tied to a tag this task declared (`- [task N] out of scope: <file> — not
+covered by this task's Tests field`). This is bookkeeping, not a second gate: a deliberate, reasonable
 divergence still gets an entry even when it doesn't fail your checklist
 above; a divergence bad enough that the code doesn't actually satisfy
 the AC still goes through the normal Returned path too, this doesn't

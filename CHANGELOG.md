@@ -126,6 +126,27 @@ Decisions: ADR [0017](evolution/decisions/0017-user-level-install-mechanics.md),
   folders. See
   [spec 0006](evolution/product/specs/0006-spec-folders.md) and
   [ADR 0024](evolution/decisions/0024-spec-folders.md).
+- **Added — safe parallel orchestration.** `/implement` can run
+  independent tasks in parallel in the same checkout without them
+  trampling each other. A new PreToolUse guard (`subagent_git_guard.py`)
+  limits subagents to read-only git; `coder`, `quickfix` and `reviewer`
+  say so, and `coder`/`quickfix` must edit with the Edit/Write tools. The
+  SubagentStop gate now exits 2 with a bounded tail of the build output
+  so a failing agent fixes its own failure (exit 1 when
+  `stop_hook_active`). That hand-off is best-effort — a subagent ending
+  through `SubagentHandback` isn't resumed — so `/implement` reads each
+  task's gate with `metrics.py gates` after its completion notification
+  and returns a failure itself. The gate also logs how many code-capable siblings overlapped
+  it (`concurrent`). `SubagentStart`/`SubagentStop` log
+  `subagent_started`/`subagent_stopped`, and the reviewer verdict is read
+  from the reviewer's transcript, so a background reviewer is counted.
+  `/implement` sets one wave per batch (`metrics.py wave-start`), and
+  `/metrics` splits gate failures into solo and concurrent. Both settings
+  templates wire `SubagentStart`, a second `SubagentStop` group and the
+  guard; mode C picks them up through the template, and a re-run of the
+  installer merges and records them for uninstall. See
+  [spec 0007](evolution/product/specs/0007-safe-parallel-orchestration/spec.md) and
+  [ADR 0025](evolution/decisions/0025-safe-parallel-orchestration.md).
 
 ### Upgrade notes (read before adopting)
 

@@ -82,6 +82,16 @@ When implementing:
   to a shared layer once a second real consumer needs it.
 - Run the local build and tests before considering the task done (the
   project's hook reinforces this automatically after every edit).
+- **Git is read-only for you** (framework ADR 0025): `status`, `diff`,
+  `log`, `show`, `rev-parse`, `ls-files`, `check-ignore`, `blame`, `grep`,
+  `cat-file`, `describe`, `worktree list`, `stash list`/`stash show`, and
+  `branch`/`tag` used only to list. Every other git command is forbidden
+  to you, `add` and `commit` included — other tasks may be editing the
+  same working tree right now. To compare against the baseline, read
+  `git show HEAD:<path>` or `git diff -- <paths>`; never revert the tree
+  to check.
+- **Edit files with the Edit tool or a script file**, never a bash
+  heredoc or `sed` with backslashes (they mangle escapes).
 - Check `.claude/skills/README.md` for any entry tagged `coder` and
   apply the ones relevant to this task — e.g. a scaffolding checklist
   for a new module/feature, a structural invariant a new table/resource

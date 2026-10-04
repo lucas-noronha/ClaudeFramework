@@ -49,10 +49,27 @@ Two modes, based on $ARGUMENTS.
    whole repository, other tasks from the same spec, `tasks.md` as a
    whole, `reconciliation.md` or `plan.md` (framework ADR 0024). The
    subagent may open `plan.md` only if the task text is insufficient. This
-   keeps its context scoped to exactly this task.
+   keeps its context scoped to exactly this task. **Every** task prompt
+   (to `coder`, `quickfix` and `reviewer`, in both modes) also repeats the
+   git rule: inside a subagent git is read-only (`status`, `diff`, `log`,
+   `show`, `rev-parse`, `ls-files`, `check-ignore`, `blame`, `grep`,
+   `cat-file`, `describe`, and `branch`/`tag`/`worktree list`/`stash list`
+   only as listings); never revert the tree to check a baseline — use
+   `git show HEAD:<path>` or `git diff -- <paths>`; a command outside the
+   list is reported so the main session runs it (framework spec 0007).
 5. After the subagent finishes, the project's build/lint/test hook
    runs automatically. If it fails, return the result to the subagent
-   before considering the task done.
+   before considering the task done. The subagent "finishes" when its
+   completion notification arrives, not when its hand-back report does:
+   the gate runs *after* the hand-back, for as long as the build/test
+   command takes, so never stop a subagent between the two — stopping it
+   kills its gate. Don't count on the gate's exit 2 to send the failure
+   back by itself (some harnesses don't resume a subagent that ended
+   through a hand-back): read the task's gate result with
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" gates`
+   (its `agent_id` is the id the Agent tool returned) and, on a failure,
+   run the build/test command once yourself for the output and send its
+   tail to that same subagent (resume it by id), as one returned failure.
 6. Once green, if `review_policy` calls for a per-task review here (see
    above — otherwise skip to step 7, and reconciliation entries for this
    task are left to the final `/review`): for a **coder**-tier task, delegate a review to
@@ -63,10 +80,17 @@ Two modes, based on $ARGUMENTS.
    changes at once during orchestration mode, so a scope-less `git
    diff` would pull in work that isn't this task's. Hand it also the
    reconciliation target path from the resolver (`reconciliation.md`, or
-   the single file's "## Reconciliation" section). As part of this same
-   pass, `reviewer` also appends reconciliation entries there for this
-   task's declared `FR-NN`/`AC-NN` tags (see framework ADR 0009)
-   — nothing extra to orchestrate here, it's the same call. A
+   the single file's "## Reconciliation" section) as the place its entries
+   belong — but `reviewer` does not edit it in a per-task review. As part
+   of this same pass it returns, for this task's declared `FR-NN`/`AC-NN`
+   tags (see framework ADR 0009), its reconciliation lines in its final
+   message under a line reading exactly `Reconciliation:`, after the
+   verdict and any `Advisory:`/`Rule may be stale:`/`Constitution
+   conflict:` lines. The coordinator (this session, never a subagent)
+   appends those lines verbatim, with Edit, one reply at a time, to the
+   resolver's reconciliation target — `reconciliation.md`, or the
+   `## Reconciliation` section of a legacy or lite file — so parallel
+   reviewers never write the same file at once. A
    **quickfix**-tier task skips review (and therefore reconciliation)
    entirely — per `docs/workflow/model-tiering.md`, don't spend a
    `reviewer` pass on a single-file trivial fix. If `reviewer` returns
@@ -141,7 +165,13 @@ framework ADR 0004):
    on every earlier task" — never infer parallel-safety from a task's
    content alone.
 3. Compute the next **wave**: every unchecked task whose dependencies
-   are already checked off.
+   are already checked off. **Before dispatching it**, run the pre-wave
+   delete/rename check (framework spec 0007, ADR 0025): read each wave
+   task's text for a file it deletes or renames, search the other tasks
+   of the same wave for references to that path, and split any pair you
+   find across waves — the referencing task goes first, the deleting or
+   renaming one waits for the next wave. Then mark the wave:
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" wave-start --feature <spec id>`.
 4. Dispatch the whole wave in one turn — one subagent call per task, in
    parallel, not sequential — each following single-task mode above
    (steps 1–8) in full, including its own build/test gate and, for
@@ -164,17 +194,34 @@ framework ADR 0004):
    touch the same file or contract, even if `/tasks` didn't flag it —
    re-verify before dispatching, don't trust the annotation blindly if
    something about two "independent" tasks looks off.
-6. Once a wave finishes (every task in it checked off), recompute the
-   next wave from what's now checked and repeat until every task in the
-   section is checked.
+6. Once every subagent of a wave has stopped (its completion
+   notification arrived — step 5; with many subagents, don't track this
+   from memory: `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" pending`
+   lists each `coder`/`quickfix` whose hand-back arrived but whose gate
+   hasn't landed, with how long it has waited — one waiting past the
+   gate hook's timeout lost its gate, so run the build/test command for
+   it yourself), run
+   `python "${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/metrics.py" gates`:
+   it prints, as JSON, the latest `gate_run` per `agent_id` in this
+   checkout since the last `wave-start`. A gate that failed while other
+   subagents were editing (`concurrent` > 0) may have failed on someone
+   else's half-finished files, so give it **one re-run**: run the
+   project's build/test command once yourself. If it passes, those
+   concurrent failures are cleared. If it fails, attribute the failing
+   output to tasks by the file lists they reported and return it to
+   those tasks. A solo final failure (`concurrent` absent or 0) is
+   returned to its task as is, the way step 5 says. Then, once every task in the wave is
+   checked off, recompute the next wave from what's now checked and
+   repeat until every task in the section is checked.
 7. If a task fails its build/test gate twice, or a `reviewer` finding
    can't be resolved after one re-review, **stop the sweep** and report
    it plainly — don't let a later wave build on top of an unresolved
-   failure.
+   failure. Only failures *returned to a task* count toward "twice": a
+   concurrent failure that step 6's re-run cleared is not one.
 8. Report a summary at the end: what was implemented per wave, what ran
    in parallel, any `reviewer` finding surfaced and how it was
-   resolved, and any divergence `reviewer` recorded in "## Reconciliation"
-   along the way.
+   resolved, and any divergence `reviewer` returned and you recorded in
+   the reconciliation target along the way.
 
 `/review` (standalone) still exists for a final, whole-feature pass
 across the cumulative diff — it catches cross-task integration issues a

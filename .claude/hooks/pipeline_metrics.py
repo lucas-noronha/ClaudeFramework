@@ -15,10 +15,9 @@ Wired to several different triggers in settings.json, all landing here:
   Edit was actually applied under the hood; framework ADR 0024)
 - PostToolUse on any subagent dispatch -> "subagent_dispatched"
   (framework ADR 0020: the per-feature subagent count `/metrics` compares)
-- PostToolUse on a subagent dispatch whose subagent_type is "reviewer"
-  (or `<prefix>-reviewer` under a user-level install) ->
-  "reviewer_verdict" (Approved/Returned, best-effort spec id parsed
-  from the prompt handed to it)
+- SubagentStop of a "reviewer" (or `<prefix>-reviewer`) -> "reviewer_verdict"
+  (Approved/Returned read from the end of its transcript, spec id from the
+  transcript's first user message; framework ADR 0025)
 
 Other events land in the same log from elsewhere: "spec_implemented"
 from spec_status_sync.py (it already computes the exact status
@@ -28,21 +27,21 @@ from run_build_test.py, and "feature_started"/"feature_finished" from
 mark which feature the events in between belong to.
 
 Best-effort throughout: never raises, never blocks, no-ops on any
-shape it doesn't recognize. The reviewer_verdict trigger depends on
-your Claude Code version's subagent-dispatch tool actually being named
-"Task" or "Agent" (both matched in settings.json) — if neither ever
-fires after a few `/review`/`/implement` runs, no reviewer_verdict
-events will appear; adjust the matcher to whatever your version uses.
+shape it doesn't recognize. subagent_dispatched depends on your Claude
+Code version's subagent-dispatch tool being named "Task" or "Agent"
+(both matched in settings.json).
 """
 import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _pipeline_metrics import log_event  # noqa: E402
 import _spec_layout  # noqa: E402
-from _project_paths import framework_config, hook_should_run, read_hook_input, specs_dir as specs_dir_of  # noqa: E402
+from _subagents import first_user_text, last_assistant_text, read_jsonl, role_of  # noqa: E402
+from _project_paths import hook_should_run, read_hook_input, specs_dir as specs_dir_of  # noqa: E402
 
 RECONCILIATION_SECTION = re.compile(r"^##\s*Reconciliation\s*$(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL)
 
@@ -100,14 +99,58 @@ def handle_spec_write(project: str, ref: dict, abspath: str, is_new_write: bool)
         )
 
 
-def _role(subagent_type: str) -> str:
-    """`cfw-reviewer` → `reviewer` under a prefixed user-level install
-    (framework ADR 0017); unchanged otherwise.
+def handle_subagent_lifecycle(project: str, data: dict, event: str) -> None:
+    """`SubagentStart` / `SubagentStop` (framework ADR 0025): log the
+    lifecycle event with only the fields the input carries.
     """
-    prefix = framework_config().get("prefix")
-    if prefix and subagent_type.startswith(prefix + "-"):
-        return subagent_type[len(prefix) + 1:]
-    return subagent_type
+    fields = {}
+    if data.get("agent_id"):
+        fields["agent_id"] = data["agent_id"]
+    agent_type = data.get("agent_type")
+    if agent_type:
+        fields["agent_type"] = agent_type
+        fields["role"] = role_of(str(agent_type))
+    log_event(project, event, **fields)
+    if event == "subagent_stopped" and fields.get("role") == "reviewer":
+        log_verdict_from_transcript(project, data)
+
+
+# `NNNN-name.md` (legacy file), `NNNN-name/` or `NNNN-name\` (folder), either slash direction.
+SPEC_REF = re.compile(r"(\d{4})-[\w-]+(?:\.md|[/\\])")
+VERDICT_RETRIES = 4
+VERDICT_RETRY_DELAY = 0.25  # seconds; the final message may land just after SubagentStop fires
+
+
+def parse_verdict(text: str):
+    stripped = text.lstrip().lstrip("*_#>`- \t\r\n")
+    for verdict in ("Approved", "Returned"):
+        if stripped.startswith(verdict):
+            return verdict
+    return None
+
+
+def log_verdict_from_transcript(project: str, data: dict) -> None:
+    """Framework ADR 0025: the reviewer's verdict is read from its own
+    transcript on `SubagentStop`, so a background reviewer (whose PostToolUse
+    response is only an ack) is counted too. Bounded retry: the transcript's
+    final message may not be flushed yet when the hook fires.
+    """
+    path = data.get("agent_transcript_path")
+    if not path:
+        return
+    verdict, records = None, []
+    for attempt in range(VERDICT_RETRIES):
+        records = read_jsonl(path)
+        verdict = parse_verdict(last_assistant_text(records))
+        if verdict or attempt == VERDICT_RETRIES - 1:
+            break
+        time.sleep(VERDICT_RETRY_DELAY)
+    if not verdict:
+        return  # doesn't match reviewer's documented reply format — skip rather than guess
+    spec_match = SPEC_REF.search(first_user_text(records))
+    fields = {"agent_id": data["agent_id"]} if data.get("agent_id") else {}
+    log_event(project, "reviewer_verdict", verdict=verdict,
+              spec_id=spec_match.group(1) if spec_match else None, **fields)
 
 
 def handle_subagent_dispatch(project: str, data: dict) -> None:
@@ -116,31 +159,9 @@ def handle_subagent_dispatch(project: str, data: dict) -> None:
 
     # Every dispatch is counted (framework ADR 0020): `/metrics` compares the
     # subagent count per feature between the fast lane and the full path.
-    log_event(project, "subagent_dispatched", subagent_type=subagent_type, role=_role(subagent_type))
-
-    if _role(subagent_type) != "reviewer":
-        return
-
-    raw_response = data.get("tool_response", "")
-    if isinstance(raw_response, dict):
-        text = raw_response.get("result") or raw_response.get("content") or raw_response.get("output") or ""
-        if isinstance(text, list):
-            text = " ".join(str(part) for part in text)
-    else:
-        text = str(raw_response)
-
-    stripped = text.strip().lstrip("*").strip()
-    if stripped.startswith("Approved"):
-        verdict = "Approved"
-    elif stripped.startswith("Returned"):
-        verdict = "Returned"
-    else:
-        return  # doesn't match reviewer's documented reply format — skip rather than guess
-
-    prompt_text = str(tool_input.get("prompt", "") or tool_input.get("description", ""))
-    # `NNNN-name.md` (legacy file), `NNNN-name/` or `NNNN-name/spec.md` (folder).
-    spec_match = re.search(r"(\d{4})-[\w-]+(?:\.md|/)", prompt_text)
-    log_event(project, "reviewer_verdict", verdict=verdict, spec_id=spec_match.group(1) if spec_match else None)
+    log_event(project, "subagent_dispatched", subagent_type=subagent_type, role=role_of(subagent_type))
+    # The reviewer verdict is NOT read here (framework ADR 0025): it is logged
+    # once, on SubagentStop, from the reviewer's transcript.
 
 
 def main() -> None:
@@ -151,6 +172,10 @@ def main() -> None:
 
     data = read_hook_input()
     project = os.environ.get("CLAUDE_PROJECT_DIR", ".")
+    hook_event = data.get("hook_event_name")
+    if hook_event in ("SubagentStart", "SubagentStop"):
+        handle_subagent_lifecycle(project, data, "subagent_started" if hook_event == "SubagentStart" else "subagent_stopped")
+        return
     tool_name = data.get("tool_name", "")
 
     if tool_name in ("Task", "Agent"):

@@ -15,4 +15,4 @@ new spec's own `area`/`relates_to` automatically.
 | 0005 | [Project language — one language for every project artifact and the conversation](0005-project-language/spec.md) | localization | implemented | — |
 | 0003 | [Proportional pipeline cost — a fast lane and cheaper gates](0003-proportional-pipeline-cost/spec.md) | pipeline-cost | implemented | — |
 | 0006 | [Spec folders — one folder per spec, one file per artifact](0006-spec-folders/spec.md) | pipeline-cost | implemented | 0003 |
-| 0007 | [Safe parallel orchestration — parallel waves that neither undo each other nor skew the metrics](0007-safe-parallel-orchestration/spec.md) | pipeline-cost | approved | 0003, 0006 |
+| 0007 | [Safe parallel orchestration — parallel waves that neither undo each other nor skew the metrics](0007-safe-parallel-orchestration/spec.md) | pipeline-cost | implemented | 0003, 0006 |

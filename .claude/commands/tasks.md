@@ -42,6 +42,12 @@ Each task must indicate:
   before it" (safe, sequential), so be explicit whenever a task
   genuinely shares no state with another (see
   `../../docs/workflow/parallel-work.md`).
+- **Deletes and renames** (framework spec 0007): no new field — the
+  `Depends on` and box formats stay as they are. When a task deletes or
+  renames a file, search the repo for references to it while writing the
+  tasks, then either fold the reference updates into that same task, or
+  make it depend on every task that removes a reference, so `/implement`
+  never runs the reference-updating and the deleting task in one wave.
 - **Tests**: if `/plan` wrote a Test plan, which of its entries this
   task is responsible for (by their `FR-NN`/`AC-NN` tag) — distribute
   every entry across exactly one task each, don't leave one uncovered

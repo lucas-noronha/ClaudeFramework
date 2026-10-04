@@ -229,6 +229,7 @@ LITERALS = {
     "matches spec": re.compile(r":\s*matches spec"),
     "diverged": re.compile(r":\s*diverged"),
     "out of scope": re.compile(r"\]\s*out of scope"),
+    "Reconciliation:": re.compile(r"(?<![#\w])Reconciliation:"),
     "Approved": re.compile(r"\bApproved\b"),
     "Returned": re.compile(r"\bReturned\b"),
     # Spec-folder file names (spec 0006 FR-09): fixed English words, never translated.

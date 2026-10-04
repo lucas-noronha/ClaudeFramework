@@ -15,7 +15,12 @@ Then add at most three lines of reading, never more:
 - whether reviewer passes are finding things (`Returned` > 0) or only
   costing time — relevant to this project's `review_policy`
   (`per-task`, `final-only`, `structural-only`);
-- any feature marked overlapped, whose numbers are approximate.
+- any feature marked overlapped, whose numbers are approximate, or
+  flagged `⚠ missing verdicts: N` (reviewer dispatches with no logged
+  verdict, so its reviewer ✓/✗ undercounts).
+
+Gate failures read `solo/concurrent`; only solo ones count as rework,
+since a concurrent failure may be another subagent's half-finished edit.
 
 Say nothing when there are fewer than two features in a lane, beyond
 "not enough data yet". Don't change any setting from here; suggesting a

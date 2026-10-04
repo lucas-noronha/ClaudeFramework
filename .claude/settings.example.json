@@ -59,6 +59,25 @@
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/secret_leak_guard.py\""
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/subagent_git_guard.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
+          }
+        ]
       }
     ],
     "SubagentStop": [
@@ -69,6 +88,14 @@
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/run_build_test.py\"",
             "timeout": 180,
             "statusMessage": "Running build + tests (deterministic gate)..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pipeline_metrics.py\""
           }
         ]
       }
